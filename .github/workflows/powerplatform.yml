@@ -1,4 +1,4 @@
-name: Power Platform CI/CD
+name: Power Platform CI
 
 on:
   push:
@@ -13,8 +13,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Display Repository Files
-        shell: cmd
+      - name: Install Power Platform CLI
+        uses: microsoft/powerplatform-actions/actions-install@v1
+
+      - name: Verify PAC CLI Installation
+        shell: pwsh
         run: |
-          echo Listing repository files...
-          dir
+          pac help
