@@ -45,7 +45,7 @@ jobs:
       - name: Verify Authentication
         shell: pwsh
         run: |
-          pac auth list4
+          pac auth list
             - name: Export Managed Solution
         shell: pwsh
         run: |
