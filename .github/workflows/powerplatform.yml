@@ -45,4 +45,18 @@ jobs:
       - name: Verify Authentication
         shell: pwsh
         run: |
-          pac auth list
+          pac auth list4
+            - name: Export Managed Solution
+        shell: pwsh
+        run: |
+          mkdir output
+          pac solution export `
+            --name "AccountContactsExport" `
+            --path "./output/AccountContactsExport.zip" `
+            --managed
+
+      - name: Upload Solution Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: managed-solution
+          path: ./output/AccountContactsExport.zip
