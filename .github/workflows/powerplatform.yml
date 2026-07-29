@@ -1,4 +1,4 @@
-name: Power Platform CI
+name: Power Platform CI/CD
 
 on:
   push:
@@ -33,7 +33,7 @@ jobs:
         run: |
           pac help
 
-      - name: Authenticate to Power Platform
+      - name: Authenticate to DEV
         shell: pwsh
         run: |
           pac auth create `
@@ -62,7 +62,7 @@ jobs:
           name: managed-solution
           path: ./output/AccountContactsExport.zip
 
-        import-solution:
+  import-solution:
     needs: export-solution
     runs-on: windows-latest
 
@@ -88,6 +88,11 @@ jobs:
         run: |
           echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+      - name: Verify PAC Installation
+        shell: pwsh
+        run: |
+          pac help
+
       - name: Authenticate to PROD
         shell: pwsh
         run: |
@@ -96,6 +101,11 @@ jobs:
             --clientSecret "${{ secrets.CLIENT_SECRET }}" `
             --tenant "${{ secrets.TENANT_ID }}" `
             --environment "${{ secrets.PROD_URL }}"
+
+      - name: Verify Authentication
+        shell: pwsh
+        run: |
+          pac auth list
 
       - name: Import Managed Solution
         shell: pwsh
