@@ -32,3 +32,17 @@ jobs:
         shell: pwsh
         run: |
           pac help
+
+      - name: Authenticate to Power Platform
+        shell: pwsh
+        run: |
+          pac auth create `
+            --applicationId "${{ secrets.CLIENT_ID }}" `
+            --clientSecret "${{ secrets.CLIENT_SECRET }}" `
+            --tenant "${{ secrets.TENANT_ID }}" `
+            --environment "${{ secrets.DEV_URL }}"
+
+      - name: Verify Authentication
+        shell: pwsh
+        run: |
+          pac auth list
