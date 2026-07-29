@@ -61,3 +61,49 @@ jobs:
         with:
           name: managed-solution
           path: ./output/AccountContactsExport.zip
+
+        import-solution:
+    needs: export-solution
+    runs-on: windows-latest
+
+    steps:
+      - name: Download Solution Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: managed-solution
+          path: ./output
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Power Platform CLI
+        shell: pwsh
+        run: |
+          dotnet tool install --global Microsoft.PowerApps.CLI.Tool
+
+      - name: Add PAC to PATH
+        shell: pwsh
+        run: |
+          echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Authenticate to PROD
+        shell: pwsh
+        run: |
+          pac auth create `
+            --applicationId "${{ secrets.CLIENT_ID }}" `
+            --clientSecret "${{ secrets.CLIENT_SECRET }}" `
+            --tenant "${{ secrets.TENANT_ID }}" `
+            --environment "${{ secrets.PROD_URL }}"
+
+      - name: Import Managed Solution
+        shell: pwsh
+        run: |
+          pac solution import `
+            --path "./output/AccountContactsExport.zip"
+
+      - name: Publish Customizations
+        shell: pwsh
+        run: |
+          pac solution publish
