@@ -1,0 +1,18 @@
+# Test Run
+name: Power Platform CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  export-solution:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Display Repository Files
+        run: dir
