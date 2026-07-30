@@ -4,11 +4,6 @@ on:
   workflow_dispatch:
     inputs:
 
-      buildNumber:
-        description: "Build to deploy (example: Build102)"
-        required: true
-        type: string
-
       deploymentType:
         description: "Select deployment type"
         required: true
@@ -22,27 +17,93 @@ on:
         required: true
         type: choice
         options:
+          - TEST
+          - UAT
           - PROD
+
+
+# ============================================================
+# PERMISSIONS
+# ============================================================
 
 permissions:
   contents: read
   actions: read
 
+
+# ============================================================
+# CONCURRENCY
+# Prevent two deployments to the same environment at once.
+# ============================================================
+
 concurrency:
   group: att-import-${{ inputs.targetEnvironment }}
   cancel-in-progress: false
 
+
 jobs:
+
+  # ==========================================================
+  # IMPORT / DEPLOYMENT JOB
+  # ==========================================================
 
   import-solution:
 
     runs-on: windows-latest
 
+    # The GitHub Environment gives us environment-specific
+    # secrets and protection rules.
+    #
+    # Create these GitHub Environments:
+    #
+    # TEST
+    # UAT
+    # PROD
+    #
+    # Each environment should contain:
+    #
+    # CLIENT_ID
+    # CLIENT_SECRET
+    # TENANT_ID
+    # ENVIRONMENT_URL
+    #
+    environment:
+      name: ${{ inputs.targetEnvironment }}
+
+
     steps:
 
-      # ==========================================================
-      # 1. CHECKOUT REPOSITORY
-      # ==========================================================
+      # ========================================================
+      # 1. DISPLAY DEPLOYMENT INPUTS
+      # ========================================================
+
+      - name: Display Deployment Information
+        shell: pwsh
+        run: |
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "ATT IMPORT / DEPLOYMENT PIPELINE"
+          Write-Host "======================================================"
+
+          Write-Host "Deployment Type:"
+          Write-Host "${{ inputs.deploymentType }}"
+
+          Write-Host ""
+          Write-Host "Target Environment:"
+          Write-Host "${{ inputs.targetEnvironment }}"
+
+          Write-Host ""
+          Write-Host "IMPORTANT:"
+          Write-Host "Build number will be automatically discovered"
+          Write-Host "from the latest successful ATT Export Solution run."
+
+          Write-Host "======================================================"
+
+
+      # ========================================================
+      # 2. CHECKOUT REPOSITORY
+      # ========================================================
 
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -50,409 +111,9 @@ jobs:
           fetch-depth: 0
 
 
-      # ==========================================================
-      # 2. DISPLAY DEPLOYMENT INPUTS
-      # ==========================================================
-
-      - name: Display Deployment Inputs
-        shell: pwsh
-        run: |
-          Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "ATT IMPORT / DEPLOYMENT PIPELINE"
-          Write-Host "======================================================"
-          Write-Host "Build              : ${{ inputs.buildNumber }}"
-          Write-Host "Deployment Type    : ${{ inputs.deploymentType }}"
-          Write-Host "Target Environment : ${{ inputs.targetEnvironment }}"
-          Write-Host "======================================================"
-          Write-Host ""
-
-
-      # ==========================================================
-      # 3. VALIDATE BUILD NUMBER
-      # ==========================================================
-
-      - name: Validate Build Number
-        shell: pwsh
-        env:
-          BUILD_NUMBER: ${{ inputs.buildNumber }}
-        run: |
-
-          if ($env:BUILD_NUMBER -notmatch "^Build[0-9]+$") {
-              Write-Error "Invalid build number."
-              Write-Error "Expected format: Build102"
-              exit 1
-          }
-
-          Write-Host "Valid build number: $env:BUILD_NUMBER"
-
-
-      # ==========================================================
-      # 4. INSTALL GITHUB CLI
-      # ==========================================================
-      #
-      # GitHub-hosted Windows runners normally include gh CLI.
-      # We verify it before using it.
-      # ==========================================================
-
-      - name: Verify GitHub CLI
-        shell: pwsh
-        run: |
-          gh --version
-
-          if ($LASTEXITCODE -ne 0) {
-              Write-Error "GitHub CLI is not available."
-              exit 1
-          }
-
-
-      # ==========================================================
-      # 5. AUTOMATICALLY FIND SUCCESSFUL EXPORT RUN
-      # ==========================================================
-      #
-      # This is the important part.
-      #
-      # User selects:
-      #
-      #     Build102
-      #
-      # Pipeline searches GitHub Actions for:
-      #
-      #     ATT Export Solution
-      #
-      # with a successful run containing:
-      #
-      #     powerplatform-solutions-Build102
-      #
-      # No Run ID needs to be entered manually.
-      # ==========================================================
-
-      - name: Find Successful Export Run
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BUILD_NUMBER: ${{ inputs.buildNumber }}
-        run: |
-
-          Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "SEARCHING FOR SUCCESSFUL EXPORT BUILD"
-          Write-Host "======================================================"
-          Write-Host "Requested Build: $env:BUILD_NUMBER"
-          Write-Host ""
-
-          $repo = "${{ github.repository }}"
-
-          Write-Host "Repository:"
-          Write-Host $repo
-          Write-Host ""
-
-          $workflowRunsUrl = `
-            "repos/$repo/actions/workflows/export-solution.yml/runs?status=success&per_page=100"
-
-          Write-Host "Getting successful export workflow runs..."
-
-          $runsJson = gh api $workflowRunsUrl
-
-          if ($LASTEXITCODE -ne 0) {
-              Write-Error "Unable to retrieve export workflow runs."
-              exit 1
-          }
-
-          $runs = $runsJson | ConvertFrom-Json
-
-          $matchingRun = $null
-          $matchingArtifact = $null
-
-          foreach ($run in $runs.workflow_runs) {
-
-              Write-Host ""
-              Write-Host "Checking Export Run:"
-              Write-Host "Run ID : $($run.id)"
-              Write-Host "Run    : $($run.run_number)"
-              Write-Host "SHA    : $($run.head_sha)"
-              Write-Host "Date   : $($run.created_at)"
-
-              $artifactUrl = `
-                "repos/$repo/actions/runs/$($run.id)/artifacts?per_page=100"
-
-              $artifactsJson = gh api $artifactUrl
-
-              if ($LASTEXITCODE -ne 0) {
-                  Write-Warning "Unable to read artifacts for run $($run.id)."
-                  continue
-              }
-
-              $artifacts = $artifactsJson | ConvertFrom-Json
-
-              $expectedArtifactName = `
-                "powerplatform-solutions-$env:BUILD_NUMBER"
-
-              foreach ($artifact in $artifacts.artifacts) {
-
-                  Write-Host "Artifact found: $($artifact.name)"
-
-                  if (
-                      $artifact.name -eq $expectedArtifactName `
-                      -and $artifact.expired -eq $false
-                  ) {
-
-                      $matchingRun = $run
-                      $matchingArtifact = $artifact
-
-                      break
-                  }
-              }
-
-              if ($null -ne $matchingArtifact) {
-                  break
-              }
-          }
-
-          if ($null -eq $matchingRun) {
-
-              Write-Error ""
-              Write-Error "======================================================"
-              Write-Error "EXPORT BUILD NOT FOUND"
-              Write-Error "======================================================"
-              Write-Error "Build: $env:BUILD_NUMBER"
-              Write-Error ""
-              Write-Error "Make sure:"
-              Write-Error "1. Export pipeline completed successfully."
-              Write-Error "2. The requested build exists."
-              Write-Error "3. The artifact has not expired."
-              Write-Error ""
-              exit 1
-          }
-
-          Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "EXPORT BUILD FOUND"
-          Write-Host "======================================================"
-          Write-Host "Build       : $env:BUILD_NUMBER"
-          Write-Host "Export Run  : $($matchingRun.id)"
-          Write-Host "Run Number  : $($matchingRun.run_number)"
-          Write-Host "Artifact ID : $($matchingArtifact.id)"
-          Write-Host "Artifact    : $($matchingArtifact.name)"
-          Write-Host "Created     : $($matchingArtifact.created_at)"
-          Write-Host "======================================================"
-
-          "EXPORT_RUN_ID=$($matchingRun.id)" |
-            Out-File `
-              -FilePath $env:GITHUB_ENV `
-              -Encoding utf8 `
-              -Append
-
-          "ARTIFACT_ID=$($matchingArtifact.id)" |
-            Out-File `
-              -FilePath $env:GITHUB_ENV `
-              -Encoding utf8 `
-              -Append
-
-          "ARTIFACT_NAME=$($matchingArtifact.name)" |
-            Out-File `
-              -FilePath $env:GITHUB_ENV `
-              -Encoding utf8 `
-              -Append
-
-
-      # ==========================================================
-      # 6. DOWNLOAD EXPORT ARTIFACT
-      # ==========================================================
-
-      - name: Download Export Artifact
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-
-          Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "DOWNLOADING EXPORT ARTIFACT"
-          Write-Host "======================================================"
-
-          New-Item `
-            -ItemType Directory `
-            -Force `
-            -Path "./deployment-artifact" |
-            Out-Null
-
-          $repo = "${{ github.repository }}"
-
-          $downloadUrl = `
-            "repos/$repo/actions/artifacts/$env:ARTIFACT_ID/zip"
-
-          Write-Host "Artifact:"
-          Write-Host $env:ARTIFACT_NAME
-          Write-Host ""
-
-          gh api `
-            $downloadUrl `
-            > "./deployment-artifact/artifact.zip"
-
-          if ($LASTEXITCODE -ne 0) {
-              Write-Error "Artifact download failed."
-              exit 1
-          }
-
-          $fileSize = `
-            (Get-Item "./deployment-artifact/artifact.zip").Length
-
-          Write-Host ""
-          Write-Host "Downloaded artifact size:"
-          Write-Host "$fileSize bytes"
-
-          if ($fileSize -le 0) {
-              Write-Error "Downloaded artifact is empty."
-              exit 1
-          }
-
-
-      # ==========================================================
-      # 7. EXTRACT ARTIFACT
-      # ==========================================================
-
-      - name: Extract Export Artifact
-        shell: pwsh
-        run: |
-
-          Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "EXTRACTING EXPORT ARTIFACT"
-          Write-Host "======================================================"
-
-          New-Item `
-            -ItemType Directory `
-            -Force `
-            -Path "./deployment-artifact/extracted" |
-            Out-Null
-
-          Expand-Archive `
-            -Path "./deployment-artifact/artifact.zip" `
-            -DestinationPath "./deployment-artifact/extracted" `
-            -Force
-
-          Write-Host ""
-          Write-Host "Artifact contents:"
-          Get-ChildItem `
-            -Path "./deployment-artifact/extracted" `
-            -Recurse |
-            Select-Object FullName
-
-
-      # ==========================================================
-      # 8. FIND SOLUTION ZIP
-      # ==========================================================
-
-      - name: Find Solution ZIP
-        shell: pwsh
-        env:
-          BUILD_NUMBER: ${{ inputs.buildNumber }}
-          DEPLOYMENT_TYPE: ${{ inputs.deploymentType }}
-        run: |
-
-          Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "LOCATING SOLUTION PACKAGE"
-          Write-Host "======================================================"
-
-          $root = "./deployment-artifact/extracted"
-
-          if ($env:DEPLOYMENT_TYPE -eq "managed") {
-
-              Write-Host "Deployment type: MANAGED"
-
-              $searchPath = `
-                Join-Path $root "output/managed"
-
-              $pattern = "*_managed.zip"
-          }
-          else {
-
-              Write-Host "Deployment type: UNMANAGED"
-
-              $searchPath = `
-                Join-Path $root "output/unmanaged"
-
-              $pattern = "*_unmanaged.zip"
-          }
-
-          Write-Host ""
-          Write-Host "Search path:"
-          Write-Host $searchPath
-
-          $solutionFiles = @()
-
-          if (Test-Path $searchPath) {
-
-              $solutionFiles = @(
-                  Get-ChildItem `
-                    -Path $searchPath `
-                    -Filter $pattern `
-                    -File
-              )
-          }
-
-          # Support the source structure generated by the enterprise
-          # export pipeline if the output folder structure differs.
-
-          if ($solutionFiles.Count -eq 0) {
-
-              Write-Host ""
-              Write-Host "Standard output location did not contain the ZIP."
-              Write-Host "Searching complete artifact..."
-
-              $solutionFiles = @(
-                  Get-ChildItem `
-                    -Path $root `
-                    -Recurse `
-                    -Filter $pattern `
-                    -File
-              )
-          }
-
-          if ($solutionFiles.Count -eq 0) {
-
-              Write-Error ""
-              Write-Error "No solution ZIP was found."
-              Write-Error "Build: $env:BUILD_NUMBER"
-              Write-Error "Deployment Type: $env:DEPLOYMENT_TYPE"
-
-              Write-Host ""
-              Write-Host "Available files:"
-              Get-ChildItem `
-                -Path $root `
-                -Recurse
-
-              exit 1
-          }
-
-          Write-Host ""
-          Write-Host "Solution ZIP files found:"
-
-          foreach ($file in $solutionFiles) {
-              Write-Host $file.FullName
-          }
-
-          # If multiple solutions exist, create a deployment list.
-          $deploymentList = @()
-
-          foreach ($file in $solutionFiles) {
-              $deploymentList += $file.FullName
-          }
-
-          $deploymentList |
-            Out-File `
-              -FilePath "./deployment-artifact/deployment-files.txt" `
-              -Encoding utf8
-
-          Write-Host ""
-          Write-Host "Deployment file list created."
-
-
-      # ==========================================================
-      # 9. INSTALL .NET
-      # ==========================================================
+      # ========================================================
+      # 3. INSTALL .NET
+      # ========================================================
 
       - name: Install .NET
         uses: actions/setup-dotnet@v4
@@ -460,20 +121,20 @@ jobs:
           dotnet-version: "8.0.x"
 
 
-      # ==========================================================
-      # 10. INSTALL POWER PLATFORM CLI
-      # ==========================================================
+      # ========================================================
+      # 4. INSTALL POWER PLATFORM CLI
+      # ========================================================
 
       - name: Install Power Platform CLI
         shell: pwsh
         run: |
 
           Write-Host ""
-          Write-Host "Installing Power Platform CLI..."
+          Write-Host "======================================================"
+          Write-Host "INSTALLING POWER PLATFORM CLI"
+          Write-Host "======================================================"
 
-          dotnet tool install `
-            --global `
-            Microsoft.PowerApps.CLI.Tool
+          dotnet tool install --global Microsoft.PowerApps.CLI.Tool
 
           if ($LASTEXITCODE -ne 0) {
               Write-Error "Power Platform CLI installation failed."
@@ -481,9 +142,9 @@ jobs:
           }
 
 
-      # ==========================================================
-      # 11. ADD PAC TO PATH
-      # ==========================================================
+      # ========================================================
+      # 5. ADD PAC TO PATH
+      # ========================================================
 
       - name: Add PAC to PATH
         shell: pwsh
@@ -491,19 +152,19 @@ jobs:
 
           $pacPath = "$env:USERPROFILE\.dotnet\tools"
 
+          Write-Host "PAC path:"
+          Write-Host $pacPath
+
           $pacPath |
             Out-File `
               -FilePath $env:GITHUB_PATH `
               -Encoding utf8 `
               -Append
 
-          Write-Host "PAC path added:"
-          Write-Host $pacPath
 
-
-      # ==========================================================
-      # 12. VERIFY PAC
-      # ==========================================================
+      # ========================================================
+      # 6. VERIFY PAC
+      # ========================================================
 
       - name: Verify PAC Installation
         shell: pwsh
@@ -511,7 +172,7 @@ jobs:
 
           Write-Host ""
           Write-Host "======================================================"
-          Write-Host "VERIFYING PAC"
+          Write-Host "VERIFYING PAC CLI"
           Write-Host "======================================================"
 
           pac help
@@ -522,90 +183,467 @@ jobs:
           }
 
 
-      # ==========================================================
-      # 13. LOAD TARGET ENVIRONMENT
-      # ==========================================================
+      # ========================================================
+      # 7. FIND LATEST SUCCESSFUL EXPORT RUN
+      #
+      # IMPORTANT:
+      #
+      # The user does NOT select Build102.
+      #
+      # GitHub automatically searches for:
+      #
+      # ATT Export Solution
+      #       +
+      # successful
+      #       +
+      # latest
+      #
+      # This is the equivalent of consuming the successful
+      # Azure DevOps build artifact.
+      # ========================================================
 
-      - name: Configure Target Environment
+      - name: Find Latest Successful ATT Export
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
         run: |
 
           Write-Host ""
           Write-Host "======================================================"
-          Write-Host "TARGET ENVIRONMENT"
+          Write-Host "SEARCHING FOR LATEST SUCCESSFUL EXPORT"
           Write-Host "======================================================"
 
-          $target = "${{ inputs.targetEnvironment }}"
-
-          switch ($target) {
-
-              "PROD" {
-                  $environmentUrl = "${{ secrets.PROD_URL }}"
-                  Write-Host "Target environment: PROD"
-              }
-
-              default {
-                  Write-Error "Unsupported target environment: $target"
-                  exit 1
-              }
+          $headers = @{
+              Authorization = "Bearer $env:GH_TOKEN"
+              Accept        = "application/vnd.github+json"
+              "X-GitHub-Api-Version" = "2022-11-28"
           }
 
-          if ([string]::IsNullOrWhiteSpace($environmentUrl)) {
-              Write-Error "Target environment URL is not configured."
+          $runsUrl =
+              "https://api.github.com/repos/$env:REPOSITORY/actions/workflows/export-solution.yml/runs?status=success&per_page=50"
+
+          Write-Host ""
+          Write-Host "Export workflow:"
+          Write-Host $runsUrl
+
+          try {
+
+              $response = Invoke-RestMethod `
+                  -Uri $runsUrl `
+                  -Headers $headers `
+                  -Method Get
+
+          }
+          catch {
+
+              Write-Error "Unable to query GitHub Actions Export workflow."
+              Write-Error $_
               exit 1
           }
 
-          "TARGET_URL=$environmentUrl" |
-            Out-File `
-              -FilePath $env:GITHUB_ENV `
-              -Encoding utf8 `
-              -Append
-
-
-      # ==========================================================
-      # 14. AUTHENTICATE TO TARGET ENVIRONMENT
-      # ==========================================================
-
-      - name: Authenticate to Target Environment
-        shell: pwsh
-        run: |
-
-          Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "AUTHENTICATING TO TARGET ENVIRONMENT"
-          Write-Host "======================================================"
-
-          pac auth create `
-            --applicationId "${{ secrets.CLIENT_ID }}" `
-            --clientSecret "${{ secrets.CLIENT_SECRET }}" `
-            --tenant "${{ secrets.TENANT_ID }}" `
-            --environment "$env:TARGET_URL"
-
-          if ($LASTEXITCODE -ne 0) {
-              Write-Error "Authentication failed."
+          if ($null -eq $response.workflow_runs) {
+              Write-Error "GitHub returned no workflow runs."
               exit 1
           }
 
+          $successfulRuns =
+              @(
+                  $response.workflow_runs |
+                  Where-Object {
+                      $_.conclusion -eq "success"
+                  }
+              )
 
-      # ==========================================================
-      # 15. VERIFY AUTHENTICATION
-      # ==========================================================
+          if ($successfulRuns.Count -eq 0) {
 
-      - name: Verify Target Authentication
+              Write-Error ""
+              Write-Error "======================================================"
+              Write-Error "NO SUCCESSFUL EXPORT FOUND"
+              Write-Error "======================================================"
+              Write-Error ""
+              Write-Error "No successful ATT Export Solution run exists."
+              Write-Error "Run ATT Export Solution before starting deployment."
+              Write-Error ""
+
+              exit 1
+          }
+
+          # GitHub returns newest runs first.
+          $latestRun = $successfulRuns |
+              Sort-Object created_at -Descending |
+              Select-Object -First 1
+
+          $runId = $latestRun.id
+          $runNumber = $latestRun.run_number
+          $commitSha = $latestRun.head_sha
+          $createdAt = $latestRun.created_at
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "LATEST SUCCESSFUL EXPORT FOUND"
+          Write-Host "======================================================"
+
+          Write-Host "Workflow:"
+          Write-Host "ATT Export Solution"
+
+          Write-Host ""
+          Write-Host "Run ID:"
+          Write-Host $runId
+
+          Write-Host ""
+          Write-Host "Run Number:"
+          Write-Host $runNumber
+
+          Write-Host ""
+          Write-Host "Commit:"
+          Write-Host $commitSha
+
+          Write-Host ""
+          Write-Host "Created:"
+          Write-Host $createdAt
+
+          Write-Host "======================================================"
+
+          "EXPORT_RUN_ID=$runId" |
+              Out-File `
+                -FilePath $env:GITHUB_ENV `
+                -Encoding utf8 `
+                -Append
+
+          "EXPORT_RUN_NUMBER=$runNumber" |
+              Out-File `
+                -FilePath $env:GITHUB_ENV `
+                -Encoding utf8 `
+                -Append
+
+          "EXPORT_COMMIT=$commitSha" |
+              Out-File `
+                -FilePath $env:GITHUB_ENV `
+                -Encoding utf8 `
+                -Append
+
+
+      # ========================================================
+      # 8. FIND ARTIFACT FROM THAT EXPORT RUN
+      # ========================================================
+
+      - name: Find Export Artifact
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "FINDING EXPORT ARTIFACT"
+          Write-Host "======================================================"
+
+          $headers = @{
+              Authorization = "Bearer $env:GH_TOKEN"
+              Accept        = "application/vnd.github+json"
+              "X-GitHub-Api-Version" = "2022-11-28"
+          }
+
+          $artifactsUrl =
+              "https://api.github.com/repos/$env:REPOSITORY/actions/runs/$env:EXPORT_RUN_ID/artifacts"
+
+          try {
+
+              $artifactResponse = Invoke-RestMethod `
+                  -Uri $artifactsUrl `
+                  -Headers $headers `
+                  -Method Get
+
+          }
+          catch {
+
+              Write-Error "Unable to retrieve artifacts from Export run."
+              Write-Error $_
+              exit 1
+          }
+
+          $artifacts =
+              @(
+                  $artifactResponse.artifacts |
+                  Where-Object {
+                      $_.expired -eq $false
+                  }
+              )
+
+          if ($artifacts.Count -eq 0) {
+
+              Write-Error ""
+              Write-Error "No valid artifacts were found for the successful Export run."
+              Write-Error "The artifact may have expired or the Export pipeline did not publish one."
+
+              exit 1
+          }
+
+          # Prefer the standard ATT artifact name.
+          $artifact =
+              $artifacts |
+              Where-Object {
+                  $_.name -like "powerplatform-solutions-*"
+              } |
+              Select-Object -First 1
+
+          if ($null -eq $artifact) {
+
+              Write-Host "Standard artifact name not found."
+              Write-Host "Available artifacts:"
+
+              foreach ($item in $artifacts) {
+                  Write-Host " - $($item.name)"
+              }
+
+              # Fall back to first valid artifact.
+              $artifact = $artifacts | Select-Object -First 1
+          }
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "EXPORT ARTIFACT FOUND"
+          Write-Host "======================================================"
+
+          Write-Host "Artifact:"
+          Write-Host $artifact.name
+
+          Write-Host ""
+          Write-Host "Artifact ID:"
+          Write-Host $artifact.id
+
+          Write-Host ""
+          Write-Host "Size:"
+          Write-Host $artifact.size_in_bytes
+
+          Write-Host "======================================================"
+
+          "ARTIFACT_ID=$($artifact.id)" |
+              Out-File `
+                -FilePath $env:GITHUB_ENV `
+                -Encoding utf8 `
+                -Append
+
+          "ARTIFACT_NAME=$($artifact.name)" |
+              Out-File `
+                -FilePath $env:GITHUB_ENV `
+                -Encoding utf8 `
+                -Append
+
+
+      # ========================================================
+      # 9. DOWNLOAD EXPORT ARTIFACT
+      # ========================================================
+
+      - name: Download Export Artifact
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "DOWNLOADING EXPORT ARTIFACT"
+          Write-Host "======================================================"
+
+          New-Item `
+              -ItemType Directory `
+              -Force `
+              -Path "./deployment-artifact" |
+              Out-Null
+
+          $artifactUrl =
+              "https://api.github.com/repos/$env:REPOSITORY/actions/artifacts/$env:ARTIFACT_ID/zip"
+
+          $headers = @{
+              Authorization = "Bearer $env:GH_TOKEN"
+              Accept        = "application/vnd.github+json"
+              "X-GitHub-Api-Version" = "2022-11-28"
+          }
+
+          $artifactZip =
+              "./deployment-artifact/export-artifact.zip"
+
+          try {
+
+              Invoke-WebRequest `
+                  -Uri $artifactUrl `
+                  -Headers $headers `
+                  -OutFile $artifactZip
+
+          }
+          catch {
+
+              Write-Error "Failed to download Export artifact."
+              Write-Error $_
+              exit 1
+          }
+
+          if (-not (Test-Path $artifactZip)) {
+
+              Write-Error "Downloaded artifact ZIP was not found."
+              exit 1
+          }
+
+          Write-Host ""
+          Write-Host "Artifact downloaded:"
+          Write-Host $artifactZip
+
+
+      # ========================================================
+      # 10. EXTRACT ARTIFACT
+      # ========================================================
+
+      - name: Extract Export Artifact
         shell: pwsh
         run: |
 
           Write-Host ""
           Write-Host "======================================================"
-          Write-Host "TARGET PAC AUTHENTICATION"
+          Write-Host "EXTRACTING EXPORT ARTIFACT"
           Write-Host "======================================================"
 
-          pac auth list
+          $extractPath =
+              "./deployment-artifact/extracted"
+
+          New-Item `
+              -ItemType Directory `
+              -Force `
+              -Path $extractPath |
+              Out-Null
+
+          Expand-Archive `
+              -Path "./deployment-artifact/export-artifact.zip" `
+              -DestinationPath $extractPath `
+              -Force
+
+          Write-Host ""
+          Write-Host "Extracted artifact contents:"
+          Get-ChildItem `
+              -Path $extractPath `
+              -Recurse |
+              Select-Object FullName
 
 
-      # ==========================================================
-      # 16. LOAD DEPLOYMENT SETTINGS
-      # ==========================================================
+      # ========================================================
+      # 11. FIND DEPLOYMENT SOLUTIONS
+      #
+      # Managed:
+      #     *_managed.zip
+      #
+      # Unmanaged:
+      #     *_unmanaged.zip
+      #
+      # All solutions from the selected successful Export are
+      # discovered automatically.
+      # ========================================================
+
+      - name: Discover Solution Packages
+        shell: pwsh
+        env:
+          DEPLOYMENT_TYPE: ${{ inputs.deploymentType }}
+        run: |
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "DISCOVERING SOLUTION PACKAGES"
+          Write-Host "======================================================"
+
+          $root =
+              "./deployment-artifact/extracted"
+
+          if ($env:DEPLOYMENT_TYPE -eq "managed") {
+
+              $pattern = "*_managed.zip"
+
+          }
+          else {
+
+              $pattern = "*_unmanaged.zip"
+
+          }
+
+          Write-Host ""
+          Write-Host "Deployment type:"
+          Write-Host $env:DEPLOYMENT_TYPE
+
+          Write-Host ""
+          Write-Host "Search pattern:"
+          Write-Host $pattern
+
+          $packages =
+              @(
+                  Get-ChildItem `
+                      -Path $root `
+                      -Filter $pattern `
+                      -Recurse `
+                      -File
+              )
+
+          if ($packages.Count -eq 0) {
+
+              Write-Error ""
+              Write-Error "======================================================"
+              Write-Error "NO SOLUTION PACKAGE FOUND"
+              Write-Error "======================================================"
+              Write-Error ""
+              Write-Error "Deployment type: $env:DEPLOYMENT_TYPE"
+              Write-Error "Expected pattern: $pattern"
+              Write-Error ""
+
+              exit 1
+          }
+
+          Write-Host ""
+          Write-Host "Solutions discovered:"
+          Write-Host ""
+
+          foreach ($package in $packages) {
+
+              Write-Host "------------------------------------------------------"
+              Write-Host $package.FullName
+              Write-Host "------------------------------------------------------"
+          }
+
+          # Store paths in a text file so later PowerShell steps
+          # can process every solution.
+          $packageList =
+              "./deployment-artifact/solution-packages.txt"
+
+          $packages.FullName |
+              Set-Content `
+                  -Path $packageList `
+                  -Encoding utf8
+
+          "SOLUTION_PACKAGE_LIST=$packageList" |
+              Out-File `
+                  -FilePath $env:GITHUB_ENV `
+                  -Encoding utf8 `
+                  -Append
+
+          Write-Host ""
+          Write-Host "Total solution packages:"
+          Write-Host $packages.Count
+
+
+      # ========================================================
+      # 12. LOAD DEPLOYMENT SETTINGS
+      #
+      # Expected repository structure:
+      #
+      # Deployment Settings/
+      #     ATT-Test.json
+      #     ATT-UAT.json
+      #     ATT-Prod.json
+      #
+      # The workflow looks for the appropriate file.
+      #
+      # If it does not exist yet, deployment continues without
+      # settings and clearly reports that.
+      # ========================================================
 
       - name: Load Deployment Settings
         shell: pwsh
@@ -618,67 +656,86 @@ jobs:
           Write-Host "DEPLOYMENT SETTINGS"
           Write-Host "======================================================"
 
-          $settingsCandidates = @(
-              "./Deployment Setting/ATT-$env:TARGET_ENVIRONMENT.json",
-              "./Deployment Setting/ATT-$env:TARGET_ENVIRONMENT-.json",
-              "./DeploymentSettings/ATT-$env:TARGET_ENVIRONMENT.json"
-          )
+          $settingsDirectory =
+              "./Deployment Settings"
 
           $settingsFile = $null
 
-          foreach ($candidate in $settingsCandidates) {
+          switch ($env:TARGET_ENVIRONMENT) {
 
-              if (Test-Path $candidate) {
-                  $settingsFile = $candidate
-                  break
+              "TEST" {
+
+                  $settingsFile =
+                      "$settingsDirectory/ATT-Test.json"
+              }
+
+              "UAT" {
+
+                  $settingsFile =
+                      "$settingsDirectory/ATT-UAT.json"
+              }
+
+              "PROD" {
+
+                  $settingsFile =
+                      "$settingsDirectory/ATT-Prod.json"
               }
           }
 
-          if ($null -eq $settingsFile) {
+          if (Test-Path $settingsFile) {
 
               Write-Host ""
-              Write-Host "No deployment settings JSON found."
-              Write-Host "Continuing because deployment settings are optional"
-              Write-Host "until the environment-specific files are added."
+              Write-Host "Deployment settings found:"
+              Write-Host $settingsFile
+
+              "DEPLOYMENT_SETTINGS_FILE=$settingsFile" |
+                  Out-File `
+                      -FilePath $env:GITHUB_ENV `
+                      -Encoding utf8 `
+                      -Append
+
+          }
+          else {
+
+              Write-Host ""
+              Write-Host "WARNING:"
+              Write-Host "Deployment settings file was not found:"
+              Write-Host $settingsFile
+
+              Write-Host ""
+              Write-Host "Deployment will continue without deployment settings."
 
               "DEPLOYMENT_SETTINGS_FILE=" |
-                Out-File `
-                  -FilePath $env:GITHUB_ENV `
-                  -Encoding utf8 `
-                  -Append
-
-              exit 0
+                  Out-File `
+                      -FilePath $env:GITHUB_ENV `
+                      -Encoding utf8 `
+                      -Append
           }
 
-          Write-Host "Deployment settings file:"
-          Write-Host $settingsFile
 
-          Get-Content $settingsFile
-
-          "DEPLOYMENT_SETTINGS_FILE=$settingsFile" |
-            Out-File `
-              -FilePath $env:GITHUB_ENV `
-              -Encoding utf8 `
-              -Append
-
-
-      # ==========================================================
-      # 17. PATCH CONNECTOR HOSTS
-      # ==========================================================
+      # ========================================================
+      # 13. PATCH CONNECTOR HOSTS
       #
-      # Runs only when your script exists.
-      # ==========================================================
+      # ATT capability:
+      #
+      # patch-connector-host.ps1
+      #
+      # This is executed only when the script exists.
+      # ========================================================
 
-      - name: Patch Connector URLs
+      - name: Patch Connector Hosts
         shell: pwsh
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.targetEnvironment }}
         run: |
 
           Write-Host ""
           Write-Host "======================================================"
-          Write-Host "PATCH CONNECTOR URLS"
+          Write-Host "PATCH CONNECTOR HOSTS"
           Write-Host "======================================================"
 
-          $script = "./PowershellScripts/patch-connector-host.ps1"
+          $script =
+              "./PowershellScripts/patch-connector-host.ps1"
 
           if (Test-Path $script) {
 
@@ -686,26 +743,35 @@ jobs:
               Write-Host $script
 
               & $script `
-                -Environment "${{ inputs.targetEnvironment }}"
+                  -Environment $env:TARGET_ENVIRONMENT
 
               if ($LASTEXITCODE -ne 0) {
-                  Write-Error "Connector URL patching failed."
+
+                  Write-Error "Connector host patching failed."
                   exit 1
               }
+
           }
           else {
 
+              Write-Host ""
               Write-Host "patch-connector-host.ps1 not found."
-              Write-Host "Skipping this step."
+              Write-Host "Skipping connector host patching."
           }
 
 
-      # ==========================================================
-      # 18. RESOLVE CONNECTION REFERENCES
-      # ==========================================================
+      # ========================================================
+      # 14. RESOLVE CONNECTION REFERENCES
+      #
+      # ATT capability:
+      #
+      # resolve-connrefs.ps1
+      # ========================================================
 
       - name: Resolve Connection References
         shell: pwsh
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.targetEnvironment }}
         run: |
 
           Write-Host ""
@@ -713,7 +779,8 @@ jobs:
           Write-Host "RESOLVE CONNECTION REFERENCES"
           Write-Host "======================================================"
 
-          $script = "./PowershellScripts/resolve-connrefs.ps1"
+          $script =
+              "./PowershellScripts/resolve-connrefs.ps1"
 
           if (Test-Path $script) {
 
@@ -721,118 +788,171 @@ jobs:
               Write-Host $script
 
               & $script `
-                -Environment "${{ inputs.targetEnvironment }}"
+                  -Environment $env:TARGET_ENVIRONMENT
 
               if ($LASTEXITCODE -ne 0) {
+
                   Write-Error "Connection reference resolution failed."
                   exit 1
               }
+
           }
           else {
 
+              Write-Host ""
               Write-Host "resolve-connrefs.ps1 not found."
-              Write-Host "Skipping this step."
+              Write-Host "Skipping connection reference resolution."
           }
 
 
-      # ==========================================================
-      # 19. IMPORT SOLUTIONS
-      # ==========================================================
+      # ========================================================
+      # 15. AUTHENTICATE TO TARGET ENVIRONMENT
+      #
+      # GitHub Environment secrets:
+      #
+      # CLIENT_ID
+      # CLIENT_SECRET
+      # TENANT_ID
+      # ENVIRONMENT_URL
+      # ========================================================
 
-      - name: Import Solutions
+      - name: Authenticate to Target Environment
         shell: pwsh
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          TENANT_ID: ${{ secrets.TENANT_ID }}
+          ENVIRONMENT_URL: ${{ secrets.ENVIRONMENT_URL }}
         run: |
 
           Write-Host ""
           Write-Host "======================================================"
-          Write-Host "IMPORTING POWER PLATFORM SOLUTIONS"
+          Write-Host "AUTHENTICATING TO TARGET ENVIRONMENT"
           Write-Host "======================================================"
 
-          $files = Get-Content `
-            "./deployment-artifact/deployment-files.txt"
+          Write-Host "Environment:"
+          Write-Host "${{ inputs.targetEnvironment }}"
 
-          if ($files.Count -eq 0) {
-              Write-Error "No deployment files found."
+          if ([string]::IsNullOrWhiteSpace($env:CLIENT_ID)) {
+
+              Write-Error "CLIENT_ID GitHub Environment secret is missing."
               exit 1
           }
 
-          foreach ($solutionFile in $files) {
+          if ([string]::IsNullOrWhiteSpace($env:CLIENT_SECRET)) {
 
-              Write-Host ""
-              Write-Host "------------------------------------------------------"
-              Write-Host "Importing:"
-              Write-Host $solutionFile
-              Write-Host "------------------------------------------------------"
+              Write-Error "CLIENT_SECRET GitHub Environment secret is missing."
+              exit 1
+          }
 
-              if ("${{ inputs.deploymentType }}" -eq "managed") {
+          if ([string]::IsNullOrWhiteSpace($env:TENANT_ID)) {
 
-                  Write-Host "Deployment type: MANAGED"
+              Write-Error "TENANT_ID GitHub Environment secret is missing."
+              exit 1
+          }
 
-                  pac solution import `
-                    --path "$solutionFile" `
-                    --async `
-                    --publish-changes
+          if ([string]::IsNullOrWhiteSpace($env:ENVIRONMENT_URL)) {
 
-              }
-              else {
+              Write-Error "ENVIRONMENT_URL GitHub Environment secret is missing."
+              exit 1
+          }
 
-                  Write-Host "Deployment type: UNMANAGED"
+          pac auth create `
+              --applicationId "$env:CLIENT_ID" `
+              --clientSecret "$env:CLIENT_SECRET" `
+              --tenant "$env:TENANT_ID" `
+              --environment "$env:ENVIRONMENT_URL"
 
-                  pac solution import `
-                    --path "$solutionFile" `
-                    --async `
-                    --publish-changes
-              }
+          if ($LASTEXITCODE -ne 0) {
 
-              if ($LASTEXITCODE -ne 0) {
-                  Write-Error "Solution import failed:"
-                  Write-Error $solutionFile
-                  exit 1
-              }
-
-              Write-Host "Import completed successfully."
+              Write-Error "Target environment authentication failed."
+              exit 1
           }
 
 
-      # ==========================================================
-      # 20. OPTIONAL STAGE AND UPGRADE
-      # ==========================================================
+      # ========================================================
+      # 16. VERIFY AUTHENTICATION
+      # ========================================================
 
-      - name: Stage and Upgrade
+      - name: Verify Target Authentication
         shell: pwsh
         run: |
 
           Write-Host ""
           Write-Host "======================================================"
-          Write-Host "STAGE AND UPGRADE"
+          Write-Host "VERIFYING TARGET AUTHENTICATION"
           Write-Host "======================================================"
 
-          $script = "./PowershellScripts/stage-and-upgrade.ps1"
+          pac auth list
 
-          if (Test-Path $script) {
 
-              Write-Host "StageAndUpgrade script found."
-              Write-Host "Running..."
+      # ========================================================
+      # 17. IMPORT SOLUTIONS
+      #
+      # Managed:
+      #     AccountContactsExport_managed.zip
+      #
+      # Unmanaged:
+      #     AccountContactsExport_unmanaged.zip
+      #
+      # Every solution package discovered in the artifact is
+      # imported.
+      # ========================================================
 
-              & $script `
-                -Environment "${{ inputs.targetEnvironment }}"
+      - name: Import Solutions
+        shell: pwsh
+        env:
+          DEPLOYMENT_TYPE: ${{ inputs.deploymentType }}
+        run: |
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "IMPORTING SOLUTIONS"
+          Write-Host "======================================================"
+
+          if (-not (Test-Path $env:SOLUTION_PACKAGE_LIST)) {
+
+              Write-Error "Solution package list was not found."
+              exit 1
+          }
+
+          $packages =
+              Get-Content $env:SOLUTION_PACKAGE_LIST
+
+          foreach ($package in $packages) {
+
+              if ([string]::IsNullOrWhiteSpace($package)) {
+                  continue
+              }
+
+              Write-Host ""
+              Write-Host "------------------------------------------------------"
+              Write-Host "IMPORTING:"
+              Write-Host $package
+              Write-Host "------------------------------------------------------"
+
+              pac solution import `
+                  --path "$package" `
+                  --force-overwrite
 
               if ($LASTEXITCODE -ne 0) {
-                  Write-Error "Stage and Upgrade failed."
+
+                  Write-Error ""
+                  Write-Error "Solution import failed:"
+                  Write-Error $package
+
                   exit 1
               }
 
-          }
-          else {
-
-              Write-Host "StageAndUpgrade script not found."
-              Write-Host "Skipping optional operation."
+              Write-Host ""
+              Write-Host "Import successful:"
+              Write-Host $package
           }
 
 
-      # ==========================================================
-      # 21. PUBLISH CUSTOMIZATIONS
-      # ==========================================================
+      # ========================================================
+      # 18. PUBLISH CUSTOMIZATIONS
+      # ========================================================
 
       - name: Publish Customizations
         shell: pwsh
@@ -846,19 +966,27 @@ jobs:
           pac solution publish
 
           if ($LASTEXITCODE -ne 0) {
+
               Write-Error "Publishing customizations failed."
               exit 1
           }
 
+          Write-Host ""
           Write-Host "Customizations published successfully."
 
 
-      # ==========================================================
-      # 22. VERIFY PUBLISH
-      # ==========================================================
+      # ========================================================
+      # 19. VERIFY PUBLISH
+      #
+      # ATT capability:
+      #
+      # verify-publish.ps1
+      # ========================================================
 
       - name: Verify Publish
         shell: pwsh
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.targetEnvironment }}
         run: |
 
           Write-Host ""
@@ -866,14 +994,19 @@ jobs:
           Write-Host "VERIFY PUBLISH"
           Write-Host "======================================================"
 
-          $script = "./PowershellScripts/verify-publish.ps1"
+          $script =
+              "./PowershellScripts/verify-publish.ps1"
 
           if (Test-Path $script) {
 
+              Write-Host "Running:"
+              Write-Host $script
+
               & $script `
-                -Environment "${{ inputs.targetEnvironment }}"
+                  -Environment $env:TARGET_ENVIRONMENT
 
               if ($LASTEXITCODE -ne 0) {
+
                   Write-Error "Publish verification failed."
                   exit 1
               }
@@ -881,80 +1014,136 @@ jobs:
           }
           else {
 
+              Write-Host ""
               Write-Host "verify-publish.ps1 not found."
-              Write-Host "Skipping optional verification script."
+              Write-Host "Skipping custom verification."
           }
 
 
-      # ==========================================================
-      # 23. FIX MANY-TO-MANY BOT RELATIONSHIPS
-      # ==========================================================
+      # ========================================================
+      # 20. FIX MANY-TO-MANY / CHATBOT RELATIONSHIPS
+      #
+      # ATT capability:
+      #
+      # fix-m2m-links.ps1
+      # ========================================================
 
-      - name: Fix Bot Relationships
+      - name: Fix M2M Links
         shell: pwsh
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.targetEnvironment }}
         run: |
 
           Write-Host ""
           Write-Host "======================================================"
-          Write-Host "FIX BOT RELATIONSHIPS"
+          Write-Host "FIXING CHATBOT / M2M RELATIONSHIPS"
           Write-Host "======================================================"
 
-          $script = "./PowershellScripts/fix-m2m-links.ps1"
+          $script =
+              "./PowershellScripts/fix-m2m-links.ps1"
 
           if (Test-Path $script) {
 
+              Write-Host "Running:"
+              Write-Host $script
+
               & $script `
-                -Environment "${{ inputs.targetEnvironment }}"
+                  -Environment $env:TARGET_ENVIRONMENT
 
               if ($LASTEXITCODE -ne 0) {
-                  Write-Error "Bot relationship fix failed."
+
+                  Write-Error "M2M relationship fix failed."
                   exit 1
               }
 
           }
           else {
 
+              Write-Host ""
               Write-Host "fix-m2m-links.ps1 not found."
-              Write-Host "Skipping optional bot relationship fix."
+              Write-Host "Skipping M2M relationship fix."
           }
 
 
-      # ==========================================================
-      # 24. PUBLISH COPILOT BOT
-      # ==========================================================
+      # ========================================================
+      # 21. INSTALL / VERIFY PAC FOR COPILOT PUBLISH
+      #
+      # PAC is already installed, so this step only verifies it.
+      # ========================================================
 
-      - name: Publish Copilot Bot
+      - name: Verify PAC For Copilot Publishing
         shell: pwsh
         run: |
 
           Write-Host ""
           Write-Host "======================================================"
-          Write-Host "PUBLISH COPILOT BOT"
+          Write-Host "VERIFY PAC FOR COPILOT"
           Write-Host "======================================================"
 
-          $script = "./PowershellScripts/publish-bot.ps1"
+          pac copilot --help
+
+          if ($LASTEXITCODE -ne 0) {
+
+              Write-Host ""
+              Write-Host "PAC Copilot command is unavailable."
+              Write-Host "Copilot publishing will be skipped unless"
+              Write-Host "the required PAC command is available."
+          }
+
+
+      # ========================================================
+      # 22. PUBLISH COPILOT BOTS
+      #
+      # ATT capability:
+      #
+      # publish-bot.ps1
+      #
+      # If the script exists, execute it.
+      # ========================================================
+
+      - name: Publish Copilot Bots
+        shell: pwsh
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.targetEnvironment }}
+        run: |
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "PUBLISH COPILOT BOTS"
+          Write-Host "======================================================"
+
+          $script =
+              "./PowershellScripts/publish-bot.ps1"
 
           if (Test-Path $script) {
 
+              Write-Host "Running:"
+              Write-Host $script
+
               & $script `
-                -Environment "${{ inputs.targetEnvironment }}"
+                  -Environment $env:TARGET_ENVIRONMENT
 
               if ($LASTEXITCODE -ne 0) {
+
                   Write-Error "Copilot bot publishing failed."
                   exit 1
               }
 
+              Write-Host ""
+              Write-Host "Copilot publishing completed."
+
           }
           else {
 
+              Write-Host ""
               Write-Host "publish-bot.ps1 not found."
-              Write-Host "Skipping optional Copilot publishing."
+              Write-Host "Skipping Copilot publishing."
           }
 
 
-      # ==========================================================
-      # 25. DEPLOYMENT SUMMARY
-      # ==========================================================
+      # ========================================================
+      # 23. DEPLOYMENT SUMMARY
+      # ========================================================
 
       - name: Deployment Summary
         if: success()
@@ -966,22 +1155,48 @@ jobs:
           Write-Host "======================================================"
           Write-Host "ATT DEPLOYMENT SUCCESSFUL"
           Write-Host "======================================================"
-          Write-Host "Build              : ${{ inputs.buildNumber }}"
-          Write-Host "Export Run ID      : $env:EXPORT_RUN_ID"
-          Write-Host "Artifact           : $env:ARTIFACT_NAME"
-          Write-Host "Deployment Type    : ${{ inputs.deploymentType }}"
-          Write-Host "Target Environment : ${{ inputs.targetEnvironment }}"
-          Write-Host "======================================================"
+
           Write-Host ""
+          Write-Host "Export Run:"
+          Write-Host $env:EXPORT_RUN_NUMBER
+
+          Write-Host ""
+          Write-Host "Export Run ID:"
+          Write-Host $env:EXPORT_RUN_ID
+
+          Write-Host ""
+          Write-Host "Artifact:"
+          Write-Host $env:ARTIFACT_NAME
+
+          Write-Host ""
+          Write-Host "Deployment Type:"
+          Write-Host "${{ inputs.deploymentType }}"
+
+          Write-Host ""
+          Write-Host "Target Environment:"
+          Write-Host "${{ inputs.targetEnvironment }}"
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "DEV → EXPORT → ARTIFACT → DEPLOYMENT"
+          Write-Host "======================================================"
 
 
-      # ==========================================================
-      # 26. FAILURE DIAGNOSTICS
-      # ==========================================================
+      # ========================================================
+      # 24. FAILURE DIAGNOSTICS
+      #
+      # ATT capability:
+      #
+      # diagnose-failure.ps1
+      #
+      # Runs only when deployment fails.
+      # ========================================================
 
       - name: Diagnose Deployment Failure
         if: failure()
         shell: pwsh
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.targetEnvironment }}
         run: |
 
           Write-Host ""
@@ -989,25 +1204,34 @@ jobs:
           Write-Host "ATT DEPLOYMENT FAILED"
           Write-Host "======================================================"
 
-          $script = "./PowershellScripts/diagnose-failure.ps1"
+          Write-Host ""
+          Write-Host "Target Environment:"
+          Write-Host "${{ inputs.targetEnvironment }}"
+
+          Write-Host ""
+          Write-Host "Deployment Type:"
+          Write-Host "${{ inputs.deploymentType }}"
+
+          Write-Host ""
+          Write-Host "Export Run:"
+          Write-Host "$env:EXPORT_RUN_NUMBER"
+
+          $script =
+              "./PowershellScripts/diagnose-failure.ps1"
 
           if (Test-Path $script) {
 
-              Write-Host "Running failure diagnostics..."
+              Write-Host ""
+              Write-Host "Running failure diagnostics:"
+              Write-Host $script
 
               & $script `
-                -Environment "${{ inputs.targetEnvironment }}"
+                  -Environment $env:TARGET_ENVIRONMENT
 
           }
           else {
 
-              Write-Host "diagnose-failure.ps1 not found."
-
               Write-Host ""
-              Write-Host "Deployment information:"
-              Write-Host "Build              : ${{ inputs.buildNumber }}"
-              Write-Host "Deployment Type    : ${{ inputs.deploymentType }}"
-              Write-Host "Target Environment : ${{ inputs.targetEnvironment }}"
-              Write-Host "Export Run ID      : $env:EXPORT_RUN_ID"
-              Write-Host "Artifact           : $env:ARTIFACT_NAME"
+              Write-Host "diagnose-failure.ps1 not found."
+              Write-Host "No custom ATT diagnostics are available."
           }
