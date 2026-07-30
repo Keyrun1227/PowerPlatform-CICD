@@ -3,17 +3,19 @@ name: ATT Export Solution
 on:
   workflow_dispatch:
     inputs:
-
       solutionNames:
-        description: 'Enter solution name(s), comma separated'
+        description: "Enter solution name(s), comma separated"
         required: true
         type: string
 
       updateVersion:
-        description: 'Update solution version?'
+        description: "Update solution version?"
         required: true
         type: boolean
         default: false
+
+permissions:
+  contents: write
 
 jobs:
 
@@ -40,7 +42,7 @@ jobs:
       - name: Install .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
 
 
       # ==========================================
@@ -60,12 +62,12 @@ jobs:
       - name: Add PAC to PATH
         shell: pwsh
         run: |
-          echo "$env:USERPROFILE\.dotnet\tools" |
+          "$env:USERPROFILE\.dotnet\tools" |
             Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
 
       # ==========================================
-      # 5. VERIFY PAC
+      # 5. VERIFY PAC INSTALLATION
       # ==========================================
 
       - name: Verify PAC Installation
@@ -89,73 +91,98 @@ jobs:
 
           $currentBuild = (Get-Content "build.txt" -Raw).Trim()
 
-          Write-Host "Current build value: $currentBuild"
+          Write-Host "========================================="
+          Write-Host "CURRENT BUILD"
+          Write-Host "========================================="
+          Write-Host "Current build: $currentBuild"
 
-          if ($currentBuild -match '^Build(\d+)$') {
+          if ($currentBuild -match "^Build(\d+)$") {
 
-              $buildNumber = [int]$Matches[1]
+              $currentNumber = [int]$Matches[1]
 
-              $newBuildNumber = $buildNumber + 1
+              $newNumber = $currentNumber + 1
 
-              $newBuild = "Build$newBuildNumber"
+              $newBuild = "Build$newNumber"
 
-              Write-Host "New build value: $newBuild"
+              Write-Host "New build: $newBuild"
 
-              Set-Content -Path "build.txt" -Value $newBuild
+              Set-Content `
+                -Path "build.txt" `
+                -Value $newBuild `
+                -NoNewline
 
               "BUILD_VERSION=$newBuild" |
-                Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+                Out-File `
+                  -FilePath $env:GITHUB_ENV `
+                  -Encoding utf8 `
+                  -Append
 
-              "BUILD_NUMBER=$newBuildNumber" |
-                Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+              "BUILD_NUMBER=$newNumber" |
+                Out-File `
+                  -FilePath $env:GITHUB_ENV `
+                  -Encoding utf8 `
+                  -Append
           }
           else {
 
               Write-Error "Invalid build.txt format."
-              Write-Error "Expected format: Build100"
+              Write-Error "Expected format such as Build100."
+
               exit 1
           }
 
 
       # ==========================================
-      # 7. DISPLAY BUILD VERSION
+      # 7. VERIFY BUILD NUMBER
       # ==========================================
 
-      - name: Display Build Version
+      - name: Verify Build Number
         shell: pwsh
         run: |
 
-          Write-Host "========================================="
-          Write-Host "BUILD VERSION"
-          Write-Host "========================================="
+          $buildVersion = (Get-Content "build.txt" -Raw).Trim()
 
-          Write-Host "Build Version : $env:BUILD_VERSION"
-          Write-Host "Build Number  : $env:BUILD_NUMBER"
+          Write-Host "========================================="
+          Write-Host "BUILD INFORMATION"
+          Write-Host "========================================="
+          Write-Host "Build Version: $buildVersion"
+          Write-Host "Build Number : $env:BUILD_NUMBER"
 
 
       # ==========================================
-      # 8. COMMIT UPDATED BUILD NUMBER
+      # 8. COMMIT BUILD NUMBER TO REPOSITORY
       # ==========================================
 
       - name: Commit Updated Build Number
         shell: pwsh
         run: |
 
+          $buildVersion = (Get-Content "build.txt" -Raw).Trim()
+
+          Write-Host "========================================="
+          Write-Host "COMMITTING BUILD NUMBER"
+          Write-Host "========================================="
+          Write-Host "Build Version: $buildVersion"
+
           git config user.name "github-actions[bot]"
+
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add build.txt
 
           if (git diff --cached --quiet) {
 
-              Write-Host "No build.txt changes to commit."
+              Write-Host "No changes detected in build.txt."
 
           }
           else {
 
-              git commit -m "Update build number to $env:BUILD_VERSION"
+              git commit `
+                -m "Update build number to $buildVersion"
 
               git push origin HEAD:main
+
+              Write-Host "Build number committed successfully."
           }
 
 
@@ -167,11 +194,20 @@ jobs:
         shell: pwsh
         run: |
 
+          Write-Host "Connecting to DEV..."
+
           pac auth create `
             --applicationId "${{ secrets.CLIENT_ID }}" `
             --clientSecret "${{ secrets.CLIENT_SECRET }}" `
             --tenant "${{ secrets.TENANT_ID }}" `
             --environment "${{ secrets.DEV_URL }}"
+
+          if ($LASTEXITCODE -ne 0) {
+              Write-Error "DEV authentication failed."
+              exit 1
+          }
+
+          Write-Host "DEV authentication successful."
 
 
       # ==========================================
@@ -181,6 +217,7 @@ jobs:
       - name: Verify Authentication
         shell: pwsh
         run: |
+
           pac auth list
 
 
@@ -191,6 +228,11 @@ jobs:
       - name: Create Output Folders
         shell: pwsh
         run: |
+
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path "./output"
 
           New-Item `
             -ItemType Directory `
@@ -214,7 +256,12 @@ jobs:
 
         run: |
 
-          $solutions = $env:SOLUTION_NAMES -split ','
+          $solutions = $env:SOLUTION_NAMES -split ","
+
+          if ($solutions.Count -eq 0) {
+              Write-Error "No solutions were provided."
+              exit 1
+          }
 
           foreach ($solution in $solutions) {
 
@@ -226,15 +273,17 @@ jobs:
 
               Write-Host ""
               Write-Host "========================================="
-              Write-Host "Processing Solution: $solution"
-              Write-Host "Build Version: $env:BUILD_VERSION"
+              Write-Host "PROCESSING SOLUTION"
               Write-Host "========================================="
+              Write-Host "Solution: $solution"
+              Write-Host "Build   : $env:BUILD_VERSION"
 
 
               # ======================================
               # MANAGED EXPORT
               # ======================================
 
+              Write-Host ""
               Write-Host "Exporting MANAGED solution..."
 
               pac solution export `
@@ -244,18 +293,19 @@ jobs:
 
               if ($LASTEXITCODE -ne 0) {
 
-                  Write-Error "Managed export failed for $solution"
+                  Write-Error "Managed export failed for $solution."
 
                   exit 1
               }
 
-              Write-Host "Managed export completed successfully."
+              Write-Host "Managed export completed."
 
 
               # ======================================
               # UNMANAGED EXPORT
               # ======================================
 
+              Write-Host ""
               Write-Host "Exporting UNMANAGED solution..."
 
               pac solution export `
@@ -264,12 +314,12 @@ jobs:
 
               if ($LASTEXITCODE -ne 0) {
 
-                  Write-Error "Unmanaged export failed for $solution"
+                  Write-Error "Unmanaged export failed for $solution."
 
                   exit 1
               }
 
-              Write-Host "Unmanaged export completed successfully."
+              Write-Host "Unmanaged export completed."
           }
 
 
@@ -288,7 +338,8 @@ jobs:
 
           Get-ChildItem `
             -Path "./output" `
-            -Recurse
+            -Recurse |
+            Select-Object FullName, Length
 
 
       # ==========================================
@@ -297,25 +348,34 @@ jobs:
 
       - name: Create Build Manifest
         shell: pwsh
+        env:
+          SOLUTION_NAMES: ${{ inputs.solutionNames }}
+
         run: |
 
+          $buildVersion = (Get-Content "build.txt" -Raw).Trim()
+
           $manifest = @{
-              BuildVersion = $env:BUILD_VERSION
-              BuildNumber  = $env:BUILD_NUMBER
-              Solutions    = "${{ inputs.solutionNames }}"
-              CreatedAt    = (Get-Date).ToUniversalTime().ToString("o")
-              Source       = "DEV"
+              BuildVersion = $buildVersion
+              BuildNumber = $env:BUILD_NUMBER
+              Solutions = $env:SOLUTION_NAMES
+              SourceEnvironment = "DEV"
+              CreatedAt = (Get-Date).ToUniversalTime().ToString("o")
           }
 
           $manifest |
             ConvertTo-Json -Depth 5 |
-            Out-File "./output/build-manifest.json" -Encoding utf8
+            Out-File `
+              -FilePath "./output/build-manifest.json" `
+              -Encoding utf8
 
           Write-Host "Build manifest created."
 
+          Get-Content "./output/build-manifest.json"
+
 
       # ==========================================
-      # 15. UPLOAD GITHUB ARTIFACT
+      # 15. CREATE ARTIFACT
       # ==========================================
 
       - name: Upload Solution Artifact
