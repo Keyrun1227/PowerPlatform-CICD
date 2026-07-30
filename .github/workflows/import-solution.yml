@@ -1,0 +1,206 @@
+name: ATT Import Solution
+
+on:
+  workflow_dispatch:
+    inputs:
+
+      exportRunId:
+        description: "GitHub Actions Run ID of the Export Pipeline"
+        required: true
+        type: string
+
+      artifactName:
+        description: "Artifact name from Export Pipeline"
+        required: true
+        type: string
+
+      deploymentType:
+        description: "Select deployment type"
+        required: true
+        type: choice
+        options:
+          - managed
+          - unmanaged
+        default: managed
+
+      environment:
+        description: "Select target environment"
+        required: true
+        type: choice
+        options:
+          - PROD
+        default: PROD
+
+
+# Required so this workflow can read artifacts
+# from another workflow run.
+permissions:
+  contents: read
+  actions: read
+
+
+jobs:
+
+  import-solution:
+
+    runs-on: windows-latest
+
+    steps:
+
+      # ==================================================
+      # 1. CHECKOUT REPOSITORY
+      # ==================================================
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+
+      # ==================================================
+      # 2. DISPLAY INPUTS
+      # ==================================================
+
+      - name: Display Deployment Inputs
+        shell: pwsh
+        run: |
+
+          Write-Host "=============================================="
+          Write-Host "ATT IMPORT PIPELINE"
+          Write-Host "=============================================="
+
+          Write-Host "Export Run ID    : ${{ inputs.exportRunId }}"
+          Write-Host "Artifact Name    : ${{ inputs.artifactName }}"
+          Write-Host "Deployment Type  : ${{ inputs.deploymentType }}"
+          Write-Host "Target Environment: ${{ inputs.environment }}"
+
+          Write-Host "=============================================="
+
+
+      # ==================================================
+      # 3. DOWNLOAD ARTIFACT FROM EXPORT PIPELINE
+      # ==================================================
+
+      - name: Download Export Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifactName }}
+          path: ./artifact
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.exportRunId }}
+
+
+      # ==================================================
+      # 4. DISPLAY DOWNLOADED ARTIFACT
+      # ==================================================
+
+      - name: Display Artifact Contents
+        shell: pwsh
+        run: |
+
+          Write-Host "=============================================="
+          Write-Host "DOWNLOADED ARTIFACT"
+          Write-Host "=============================================="
+
+          if (-not (Test-Path "./artifact")) {
+              Write-Error "Artifact folder was not created."
+              exit 1
+          }
+
+          Get-ChildItem `
+            -Path "./artifact" `
+            -Recurse |
+            Select-Object FullName, Length
+
+          Write-Host "=============================================="
+
+
+      # ==================================================
+      # 5. FIND MANAGED / UNMANAGED SOLUTION
+      # ==================================================
+
+      - name: Locate Solution Package
+        shell: pwsh
+        run: |
+
+          Write-Host "=============================================="
+          Write-Host "LOCATING SOLUTION PACKAGE"
+          Write-Host "=============================================="
+
+          if ("${{ inputs.deploymentType }}" -eq "managed") {
+
+              Write-Host "Looking for MANAGED solution..."
+
+              $solution = Get-ChildItem `
+                -Path "./artifact" `
+                -Filter "*_managed.zip" `
+                -Recurse |
+                Select-Object -First 1
+
+          }
+          else {
+
+              Write-Host "Looking for UNMANAGED solution..."
+
+              $solution = Get-ChildItem `
+                -Path "./artifact" `
+                -Filter "*_unmanaged.zip" `
+                -Recurse |
+                Select-Object -First 1
+          }
+
+          if ($null -eq $solution) {
+
+              Write-Error "No ${{ inputs.deploymentType }} solution ZIP was found."
+
+              Write-Host ""
+              Write-Host "Files available in artifact:"
+
+              Get-ChildItem `
+                -Path "./artifact" `
+                -Recurse
+
+              exit 1
+          }
+
+          Write-Host "Solution found:"
+          Write-Host $solution.FullName
+
+          "SOLUTION_PATH=$($solution.FullName)" |
+            Out-File `
+              -FilePath $env:GITHUB_ENV `
+              -Encoding utf8 `
+              -Append
+
+
+      # ==================================================
+      # 6. DISPLAY FINAL PACKAGE
+      # ==================================================
+
+      - name: Deployment Package Summary
+        shell: pwsh
+        run: |
+
+          Write-Host ""
+          Write-Host "=============================================="
+          Write-Host "PACKAGE READY FOR DEPLOYMENT"
+          Write-Host "=============================================="
+
+          Write-Host "Artifact:"
+          Write-Host "${{ inputs.artifactName }}"
+
+          Write-Host ""
+
+          Write-Host "Deployment Type:"
+          Write-Host "${{ inputs.deploymentType }}"
+
+          Write-Host ""
+
+          Write-Host "Target Environment:"
+          Write-Host "${{ inputs.environment }}"
+
+          Write-Host ""
+
+          Write-Host "Solution Package:"
+          Write-Host "$env:SOLUTION_PATH"
+
+          Write-Host "=============================================="
