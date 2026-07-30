@@ -15,12 +15,9 @@ on:
         type: boolean
         default: false
 
-# Required because the workflow commits build/source/ZIP changes
-# back into the GitHub repository.
 permissions:
   contents: write
 
-# Prevent two export builds from modifying build.txt at the same time.
 concurrency:
   group: att-export-main
   cancel-in-progress: false
@@ -34,9 +31,9 @@ jobs:
 
     steps:
 
-      # ==========================================================
+      # ============================================================
       # 1. CHECKOUT REPOSITORY
-      # ==========================================================
+      # ============================================================
 
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -45,32 +42,28 @@ jobs:
           fetch-depth: 0
 
 
-      # ==========================================================
+      # ============================================================
       # 2. DISPLAY INPUTS
-      # ==========================================================
+      # ============================================================
 
       - name: Display Pipeline Inputs
         shell: pwsh
         run: |
-
           Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "ATT EXPORT PIPELINE"
-          Write-Host "======================================================"
-
-          Write-Host "Solution(s):"
+          Write-Host "============================================================"
+          Write-Host "ATT POWER PLATFORM EXPORT PIPELINE"
+          Write-Host "============================================================"
+          Write-Host "Solutions:"
           Write-Host "${{ inputs.solutionNames }}"
-
           Write-Host ""
-          Write-Host "Update Solution Version:"
+          Write-Host "Update Version:"
           Write-Host "${{ inputs.updateVersion }}"
+          Write-Host "============================================================"
 
-          Write-Host "======================================================"
 
-
-      # ==========================================================
+      # ============================================================
       # 3. INSTALL .NET
-      # ==========================================================
+      # ============================================================
 
       - name: Install .NET
         uses: actions/setup-dotnet@v4
@@ -78,15 +71,13 @@ jobs:
           dotnet-version: "8.0.x"
 
 
-      # ==========================================================
+      # ============================================================
       # 4. INSTALL POWER PLATFORM CLI
-      # ==========================================================
+      # ============================================================
 
       - name: Install Power Platform CLI
         shell: pwsh
         run: |
-
-          Write-Host ""
           Write-Host "Installing Power Platform CLI..."
 
           dotnet tool install --global Microsoft.PowerApps.CLI.Tool
@@ -97,38 +88,35 @@ jobs:
           }
 
 
-      # ==========================================================
+      # ============================================================
       # 5. ADD PAC TO PATH
-      # ==========================================================
+      # ============================================================
 
-      - name: Add PAC to PATH
+      - name: Add PAC To PATH
         shell: pwsh
         run: |
-
           $pacPath = "$env:USERPROFILE\.dotnet\tools"
 
           Write-Host "PAC path:"
           Write-Host $pacPath
 
-          $pacPath |
-            Out-File `
-              -FilePath $env:GITHUB_PATH `
-              -Encoding utf8 `
-              -Append
+          $pacPath | Out-File `
+            -FilePath $env:GITHUB_PATH `
+            -Encoding utf8 `
+            -Append
 
 
-      # ==========================================================
+      # ============================================================
       # 6. VERIFY PAC
-      # ==========================================================
+      # ============================================================
 
       - name: Verify PAC Installation
         shell: pwsh
         run: |
-
           Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "VERIFYING POWER PLATFORM CLI"
-          Write-Host "======================================================"
+          Write-Host "============================================================"
+          Write-Host "VERIFYING PAC CLI"
+          Write-Host "============================================================"
 
           pac help
 
@@ -138,25 +126,25 @@ jobs:
           }
 
 
-      # ==========================================================
+      # ============================================================
       # 7. READ AND INCREMENT BUILD NUMBER
-      # ==========================================================
+      # ============================================================
 
-      - name: Read and Increment Build Number
+      - name: Read And Increment Build Number
         shell: pwsh
         run: |
 
           Write-Host ""
-          Write-Host "======================================================"
+          Write-Host "============================================================"
           Write-Host "BUILD NUMBER MANAGEMENT"
-          Write-Host "======================================================"
+          Write-Host "============================================================"
 
           $buildFile = "./build.txt"
 
           if (-not (Test-Path $buildFile)) {
 
-              Write-Host "build.txt not found."
-              Write-Host "Starting from Build100."
+              Write-Host "build.txt does not exist."
+              Write-Host "Starting with Build100."
 
               $currentBuild = 100
           }
@@ -164,22 +152,25 @@ jobs:
 
               $content = (Get-Content $buildFile -Raw).Trim()
 
-              Write-Host "Current build value:"
+              Write-Host "Current build:"
               Write-Host $content
 
               if ($content -match "^Build(\d+)$") {
 
                   $currentBuild = [int]$Matches[1]
+
               }
               else {
 
                   Write-Error "Invalid build.txt format."
                   Write-Error "Expected format: Build100"
+
                   exit 1
               }
           }
 
           $newBuildNumber = $currentBuild + 1
+
           $buildVersion = "Build$newBuildNumber"
 
           Set-Content `
@@ -198,18 +189,18 @@ jobs:
               -Append
 
 
-      # ==========================================================
+      # ============================================================
       # 8. AUTHENTICATE TO DEV
-      # ==========================================================
+      # ============================================================
 
-      - name: Authenticate to DEV
+      - name: Authenticate To DEV
         shell: pwsh
         run: |
 
           Write-Host ""
-          Write-Host "======================================================"
+          Write-Host "============================================================"
           Write-Host "AUTHENTICATING TO DEV"
-          Write-Host "======================================================"
+          Write-Host "============================================================"
 
           pac auth create `
             --applicationId "${{ secrets.CLIENT_ID }}" `
@@ -218,65 +209,74 @@ jobs:
             --environment "${{ secrets.DEV_URL }}"
 
           if ($LASTEXITCODE -ne 0) {
+
               Write-Error "DEV authentication failed."
+
               exit 1
           }
 
 
-      # ==========================================================
-      # 9. VERIFY AUTHENTICATION
-      # ==========================================================
+      # ============================================================
+      # 9. VERIFY DEV AUTHENTICATION
+      # ============================================================
 
       - name: Verify DEV Authentication
         shell: pwsh
         run: |
 
           Write-Host ""
-          Write-Host "======================================================"
+          Write-Host "============================================================"
           Write-Host "PAC AUTHENTICATION"
-          Write-Host "======================================================"
+          Write-Host "============================================================"
 
           pac auth list
 
 
-      # ==========================================================
-      # 10. PREPARE DIRECTORIES
-      # ==========================================================
+      # ============================================================
+      # 10. PREPARE REPOSITORY DIRECTORIES
+      # ============================================================
 
-      - name: Prepare Build Directories
+      - name: Prepare Repository Directories
         shell: pwsh
         run: |
 
           Write-Host ""
-          Write-Host "Preparing directories..."
+          Write-Host "Preparing repository directories..."
 
           New-Item `
             -ItemType Directory `
             -Force `
-            -Path "./Solutions" |
+            -Path "./src/solutions" |
             Out-Null
 
           New-Item `
             -ItemType Directory `
             -Force `
-            -Path "./output" |
+            -Path "./deployments/$env:BUILD_VERSION" |
             Out-Null
 
           New-Item `
             -ItemType Directory `
             -Force `
-            -Path "./checker-results" |
+            -Path "./checker-results/$env:BUILD_VERSION" |
+            Out-Null
+
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path "./temp/$env:BUILD_VERSION" |
             Out-Null
 
 
-      # ==========================================================
-      # 11. PROCESS EACH SOLUTION
-      # ==========================================================
+      # ============================================================
+      # 11. EXPORT / CHECK / UNPACK / PACK
+      # ============================================================
 
-      - name: Export and Validate Solutions
+      - name: Process Selected Solutions
         shell: pwsh
         env:
           SOLUTION_NAMES: ${{ inputs.solutionNames }}
+          UPDATE_VERSION: ${{ inputs.updateVersion }}
         run: |
 
           $solutions = $env:SOLUTION_NAMES -split ','
@@ -291,60 +291,49 @@ jobs:
 
               Write-Host ""
               Write-Host ""
-              Write-Host "######################################################"
+              Write-Host "############################################################"
               Write-Host "PROCESSING SOLUTION"
               Write-Host "Solution : $solution"
               Write-Host "Build    : $env:BUILD_VERSION"
-              Write-Host "######################################################"
+              Write-Host "############################################################"
 
 
-              # ==================================================
-              # SOLUTION DIRECTORIES
-              # ==================================================
+              # ======================================================
+              # SOLUTION PATHS
+              # ======================================================
 
-              $solutionRoot =
-                  "./Solutions/$solution/$env:BUILD_VERSION"
+              $sourcePath =
+                "./src/solutions/$solution"
 
-              $sourceFolder =
-                  "$solutionRoot/source"
+              $buildPath =
+                "./temp/$env:BUILD_VERSION/$solution"
 
-              $managedFolder =
-                  "$solutionRoot/managed"
+              $managedPath =
+                "./deployments/$env:BUILD_VERSION/${solution}_managed.zip"
 
-              $unmanagedFolder =
-                  "$solutionRoot/unmanaged"
+              $unmanagedPath =
+                "./deployments/$env:BUILD_VERSION/${solution}_unmanaged.zip"
 
-              $validationFolder =
-                  "$solutionRoot/validation"
+              $checkerPath =
+                "./checker-results/$env:BUILD_VERSION/$solution"
+
 
               New-Item `
                 -ItemType Directory `
                 -Force `
-                -Path $sourceFolder |
+                -Path $buildPath |
                 Out-Null
 
               New-Item `
                 -ItemType Directory `
                 -Force `
-                -Path $managedFolder |
-                Out-Null
-
-              New-Item `
-                -ItemType Directory `
-                -Force `
-                -Path $unmanagedFolder |
-                Out-Null
-
-              New-Item `
-                -ItemType Directory `
-                -Force `
-                -Path $validationFolder |
+                -Path $checkerPath |
                 Out-Null
 
 
-              # ==================================================
+              # ======================================================
               # 12. READ CURRENT SOLUTION VERSION
-              # ==================================================
+              # ======================================================
 
               Write-Host ""
               Write-Host "Reading current solution version..."
@@ -355,32 +344,31 @@ jobs:
               if ($LASTEXITCODE -ne 0) {
 
                   Write-Error `
-                    "Unable to read current version for solution: $solution"
+                    "Unable to read current version for $solution."
 
                   exit 1
               }
 
-              Write-Host ""
               Write-Host "PAC version response:"
               Write-Host $versionOutput
 
 
-              # ==================================================
-              # 13. PARSE CURRENT VERSION
-              # ==================================================
+              # ======================================================
+              # 13. PARSE VERSION
+              # ======================================================
 
               $versionText = ($versionOutput | Out-String).Trim()
 
-              $versionMatch =
-                  [regex]::Match(
-                      $versionText,
-                      "\d+\.\d+\.\d+\.\d+"
-                  )
+              $versionMatch = `
+                [regex]::Match(
+                    $versionText,
+                    "\d+\.\d+\.\d+\.\d+"
+                )
 
               if (-not $versionMatch.Success) {
 
                   Write-Error `
-                    "Could not determine current solution version for $solution."
+                    "Could not determine solution version for $solution."
 
                   exit 1
               }
@@ -388,32 +376,38 @@ jobs:
               $currentVersion = $versionMatch.Value
 
               Write-Host ""
-              Write-Host "Current solution version:"
+              Write-Host "Current Version:"
               Write-Host $currentVersion
 
 
-              # ==================================================
-              # 14. OPTIONAL VERSION UPDATE
-              # ==================================================
+              # ======================================================
+              # 14. OPTIONAL SOLUTION VERSION UPDATE
+              # ======================================================
 
-              if ("${{ inputs.updateVersion }}" -eq "true") {
+              if ($env:UPDATE_VERSION -eq "true") {
 
                   Write-Host ""
-                  Write-Host "Updating Power Platform solution version..."
+                  Write-Host "Updating solution version..."
 
-                  $versionParts =
-                      $currentVersion.Split(".")
+                  $parts = $currentVersion.Split(".")
 
-                  $major = [int]$versionParts[0]
-                  $minor = [int]$versionParts[1]
-                  $build = [int]$versionParts[2]
-                  $revision = [int]$versionParts[3]
+                  $major =
+                    [int]$parts[0]
 
-                  # Increment revision.
-                  $newRevision = $revision + 1
+                  $minor =
+                    [int]$parts[1]
+
+                  $build =
+                    [int]$parts[2]
+
+                  $revision =
+                    [int]$parts[3]
+
+                  $newRevision =
+                    $revision + 1
 
                   $newVersion =
-                      "$major.$minor.$build.$newRevision"
+                    "$major.$minor.$build.$newRevision"
 
                   Write-Host ""
                   Write-Host "Old Version : $currentVersion"
@@ -426,54 +420,34 @@ jobs:
                   if ($LASTEXITCODE -ne 0) {
 
                       Write-Error `
-                        "Failed to update solution version for $solution."
+                        "Failed to update version for $solution."
 
                       exit 1
                   }
 
-                  Write-Host ""
-                  Write-Host "Solution version updated successfully."
+                  Write-Host "Version updated successfully."
 
               }
               else {
 
                   Write-Host ""
-                  Write-Host "Solution version update disabled."
+                  Write-Host "Version update disabled."
 
-                  $newVersion = $currentVersion
+                  $newVersion =
+                    $currentVersion
               }
 
 
-              # ==================================================
-              # SAVE VERSION INFORMATION
-              # ==================================================
-
-              $versionInfo = @"
-Solution Name : $solution
-Build         : $env:BUILD_VERSION
-Version       : $newVersion
-"@
-
-              Set-Content `
-                -Path "$solutionRoot/version.txt" `
-                -Value $versionInfo `
-                -Encoding utf8
-
-
-              # ==================================================
+              # ======================================================
               # 15. EXPORT UNMANAGED SOLUTION
-              # ==================================================
+              # ======================================================
 
               Write-Host ""
               Write-Host "Exporting UNMANAGED solution..."
 
-              $unmanagedZip =
-                  "$unmanagedFolder/${solution}_unmanaged.zip"
-
               pac solution export `
                 --name "$solution" `
-                --path "$unmanagedZip" `
-                --overwrite
+                --path "$unmanagedPath"
 
               if ($LASTEXITCODE -ne 0) {
 
@@ -483,26 +457,20 @@ Version       : $newVersion
                   exit 1
               }
 
-              Write-Host ""
-              Write-Host "Unmanaged export completed:"
-              Write-Host $unmanagedZip
+              Write-Host "Unmanaged export completed."
 
 
-              # ==================================================
+              # ======================================================
               # 16. EXPORT MANAGED SOLUTION
-              # ==================================================
+              # ======================================================
 
               Write-Host ""
               Write-Host "Exporting MANAGED solution..."
 
-              $managedZip =
-                  "$managedFolder/${solution}_managed.zip"
-
               pac solution export `
                 --name "$solution" `
-                --path "$managedZip" `
-                --managed `
-                --overwrite
+                --path "$managedPath" `
+                --managed
 
               if ($LASTEXITCODE -ne 0) {
 
@@ -512,59 +480,63 @@ Version       : $newVersion
                   exit 1
               }
 
-              Write-Host ""
-              Write-Host "Managed export completed:"
-              Write-Host $managedZip
+              Write-Host "Managed export completed."
 
 
-              # ==================================================
-              # 17. RUN POWER PLATFORM SOLUTION CHECKER
-              # ==================================================
+              # ======================================================
+              # 17. SOLUTION CHECKER
+              # ======================================================
 
               Write-Host ""
-              Write-Host "======================================================"
-              Write-Host "RUNNING POWER PLATFORM SOLUTION CHECKER"
-              Write-Host "======================================================"
-
-              $checkerOutput =
-                  "./checker-results/$solution-$env:BUILD_VERSION"
-
-              New-Item `
-                -ItemType Directory `
-                -Force `
-                -Path $checkerOutput |
-                Out-Null
+              Write-Host "Running Power Platform Solution Checker..."
 
               pac solution check `
-                --path "$unmanagedZip" `
-                --outputDirectory "$checkerOutput"
+                --path "$unmanagedPath" `
+                --outputDirectory "$checkerPath"
 
               if ($LASTEXITCODE -ne 0) {
 
                   Write-Error `
-                    "Solution Checker command failed for $solution."
+                    "Solution Checker failed for $solution."
 
                   exit 1
               }
 
-              Write-Host ""
               Write-Host "Solution Checker completed."
 
 
-              # ==================================================
-              # 18. UNPACK UNMANAGED SOLUTION
-              # ==================================================
+              # ======================================================
+              # 18. REMOVE OLD SOURCE
+              # ======================================================
+
+              if (Test-Path $sourcePath) {
+
+                  Write-Host ""
+                  Write-Host "Removing previous unpacked source..."
+
+                  Remove-Item `
+                    -Path $sourcePath `
+                    -Recurse `
+                    -Force
+              }
+
+
+              # ======================================================
+              # 19. UNPACK UNMANAGED SOLUTION
+              # ======================================================
 
               Write-Host ""
-              Write-Host "======================================================"
-              Write-Host "UNPACKING UNMANAGED SOLUTION"
-              Write-Host "======================================================"
+              Write-Host "Unpacking UNMANAGED solution..."
+
+              New-Item `
+                -ItemType Directory `
+                -Force `
+                -Path $sourcePath |
+                Out-Null
 
               pac solution unpack `
-                --zipfile "$unmanagedZip" `
-                --folder "$sourceFolder" `
-                --packagetype Unmanaged `
-                --clobber
+                --zipfile "$unmanagedPath" `
+                --folder "$sourcePath"
 
               if ($LASTEXITCODE -ne 0) {
 
@@ -574,183 +546,159 @@ Version       : $newVersion
                   exit 1
               }
 
-              Write-Host ""
-              Write-Host "Solution successfully unpacked."
+              Write-Host "Solution unpack completed."
 
 
-              # ==================================================
-              # 19. PACK SOURCE AGAIN FOR VALIDATION
-              # ==================================================
+              # ======================================================
+              # 20. SAVE BUILD INFORMATION
+              # ======================================================
 
-              Write-Host ""
-              Write-Host "======================================================"
-              Write-Host "PACKING SOURCE FOR VALIDATION"
-              Write-Host "======================================================"
+              $versionInfo = @"
+                Solution Name : $solution
+                Build         : $env:BUILD_VERSION
+                Version       : $newVersion
+                Managed ZIP   : ${solution}_managed.zip
+                Unmanaged ZIP : ${solution}_unmanaged.zip
+                "@
+
+              Set-Content `
+                -Path "$sourcePath/build-info.txt" `
+                -Value $versionInfo `
+                -Encoding utf8
+
+
+              # ======================================================
+              # 21. PACK SOURCE FOR VALIDATION
+              # ======================================================
 
               $validationZip =
-                  "$validationFolder/${solution}_validation.zip"
+                "$buildPath/${solution}_validation.zip"
+
+              Write-Host ""
+              Write-Host "Packing source for validation..."
 
               pac solution pack `
-                --folder "$sourceFolder" `
+                --folder "$sourcePath" `
                 --zipfile "$validationZip" `
-                --packagetype Unmanaged `
-                --clobber
+                --packagetype Unmanaged
 
               if ($LASTEXITCODE -ne 0) {
 
                   Write-Error `
-                    "Solution pack validation failed for $solution."
+                    "Solution pack failed for $solution."
 
                   exit 1
               }
 
-              Write-Host ""
-              Write-Host "Validation package created:"
-              Write-Host $validationZip
+              Write-Host "Validation package created."
 
 
-              # ==================================================
-              # 20. COPY DEPLOYMENT PACKAGES TO BUILD OUTPUT
-              # ==================================================
-
-              $artifactSolutionFolder =
-                  "./output/$solution/$env:BUILD_VERSION"
-
-              New-Item `
-                -ItemType Directory `
-                -Force `
-                -Path "$artifactSolutionFolder/managed" |
-                Out-Null
-
-              New-Item `
-                -ItemType Directory `
-                -Force `
-                -Path "$artifactSolutionFolder/unmanaged" |
-                Out-Null
-
-              Copy-Item `
-                -Path "$managedZip" `
-                -Destination "$artifactSolutionFolder/managed/" `
-                -Force
-
-              Copy-Item `
-                -Path "$unmanagedZip" `
-                -Destination "$artifactSolutionFolder/unmanaged/" `
-                -Force
+              # ======================================================
+              # 22. DISPLAY SOLUTION RESULTS
+              # ======================================================
 
               Write-Host ""
-              Write-Host "Deployment packages copied to artifact output."
+              Write-Host "============================================================"
+              Write-Host "SOLUTION COMPLETED"
+              Write-Host "============================================================"
 
-
-              # ==================================================
-              # 21. COPY CHECKER RESULTS TO BUILD OUTPUT
-              # ==================================================
-
-              $checkerArtifactFolder =
-                  "$artifactSolutionFolder/solution-checker"
-
-              New-Item `
-                -ItemType Directory `
-                -Force `
-                -Path $checkerArtifactFolder |
-                Out-Null
-
-              Copy-Item `
-                -Path "$checkerOutput/*" `
-                -Destination "$checkerArtifactFolder/" `
-                -Recurse `
-                -Force `
-                -ErrorAction SilentlyContinue
-
-
-              # ==================================================
-              # 22. DISPLAY SOURCE FILES
-              # ==================================================
+              Write-Host "Solution:"
+              Write-Host $solution
 
               Write-Host ""
-              Write-Host "======================================================"
-              Write-Host "SOURCE CONTROL FILES"
-              Write-Host "======================================================"
+              Write-Host "Version:"
+              Write-Host $newVersion
 
-              Get-ChildItem `
-                -Path "$sourceFolder" `
-                -Recurse |
-                Select-Object FullName, Length
+              Write-Host ""
+              Write-Host "Managed ZIP:"
+              Write-Host $managedPath
+
+              Write-Host ""
+              Write-Host "Unmanaged ZIP:"
+              Write-Host $unmanagedPath
+
+              Write-Host ""
+              Write-Host "Source:"
+              Write-Host $sourcePath
+
+              Write-Host "============================================================"
           }
 
 
-      # ==========================================================
-      # 23. DISPLAY COMPLETE BUILD OUTPUT
-      # ==========================================================
+      # ============================================================
+      # 23. DISPLAY GENERATED FILES
+      # ============================================================
 
-      - name: Display Build Output
+      - name: Display Generated Files
         shell: pwsh
         run: |
 
           Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "FINAL BUILD OUTPUT"
-          Write-Host "======================================================"
+          Write-Host "============================================================"
+          Write-Host "GENERATED FILES"
+          Write-Host "============================================================"
 
           Get-ChildItem `
-            -Path "./Solutions" `
+            -Path "./src" `
             -Recurse |
-            Select-Object FullName, Length
+            Select-Object FullName
 
           Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "DEPLOYMENT ARTIFACT OUTPUT"
-          Write-Host "======================================================"
+          Write-Host "DEPLOYMENT PACKAGES"
 
           Get-ChildItem `
-            -Path "./output" `
+            -Path "./deployments" `
             -Recurse |
-            Select-Object FullName, Length
+            Select-Object FullName
+
+          Write-Host ""
+          Write-Host "SOLUTION CHECKER RESULTS"
+
+          Get-ChildItem `
+            -Path "./checker-results" `
+            -Recurse |
+            Select-Object FullName
 
 
-      # ==========================================================
-      # 24. COMMIT SOURCE + ZIP + BUILD NUMBER
-      # ==========================================================
+      # ============================================================
+      # 24. COMMIT SOURCE + BUILD + ZIP FILES TO GITHUB
+      # ============================================================
 
-      - name: Commit Build to Repository
+      - name: Commit Build To Repository
         shell: pwsh
         run: |
 
           Write-Host ""
-          Write-Host "======================================================"
+          Write-Host "============================================================"
           Write-Host "COMMITTING BUILD TO GITHUB"
-          Write-Host "======================================================"
+          Write-Host "============================================================"
 
           git config user.name "github-actions[bot]"
-
-          git config `
-            user.email `
-            "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add build.txt
-          git add Solutions/
+          git add src/
+          git add deployments/
+          git add checker-results/
 
-          Write-Host ""
-          Write-Host "Git status:"
           git status
 
-          $stagedChanges =
-              git diff --cached --name-only
+          git diff --cached --quiet
 
-          if ([string]::IsNullOrWhiteSpace($stagedChanges)) {
+          if ($LASTEXITCODE -eq 0) {
 
-              Write-Host ""
               Write-Host "No repository changes detected."
 
           }
           else {
 
               git commit `
-                -m "ATT Export - $env:BUILD_VERSION"
+                -m "ATT Export $env:BUILD_VERSION"
 
               if ($LASTEXITCODE -ne 0) {
 
                   Write-Error "Git commit failed."
+
                   exit 1
               }
 
@@ -759,73 +707,61 @@ Version       : $newVersion
               if ($LASTEXITCODE -ne 0) {
 
                   Write-Error "Git push failed."
+
                   exit 1
               }
 
               Write-Host ""
-              Write-Host "Repository updated successfully."
+              Write-Host "Build committed successfully."
           }
 
 
-      # ==========================================================
-      # 25. UPLOAD DEPLOYMENT ARTIFACT
-      # ==========================================================
+      # ============================================================
+      # 25. CREATE GITHUB ACTIONS ARTIFACT
+      # ============================================================
 
-      - name: Upload Deployment Artifact
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: powerplatform-solutions-${{ env.BUILD_VERSION }}
-          path: ./output
+          path: |
+            ./deployments/${{ env.BUILD_VERSION }}
+            ./checker-results/${{ env.BUILD_VERSION }}
           if-no-files-found: error
-          retention-days: 90
 
 
-      # ==========================================================
-      # 26. UPLOAD CHECKER RESULTS
-      # ==========================================================
+      # ============================================================
+      # 26. BUILD SUMMARY
+      # ============================================================
 
-      - name: Upload Solution Checker Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: solution-checker-${{ env.BUILD_VERSION }}
-          path: ./checker-results
-          if-no-files-found: warn
-          retention-days: 90
-
-
-      # ==========================================================
-      # 27. FINAL SUMMARY
-      # ==========================================================
-
-      - name: Export Summary
+      - name: Build Summary
         shell: pwsh
         run: |
 
           Write-Host ""
-          Write-Host ""
-          Write-Host "======================================================"
+          Write-Host "============================================================"
           Write-Host "ATT EXPORT PIPELINE COMPLETED"
-          Write-Host "======================================================"
+          Write-Host "============================================================"
 
           Write-Host ""
           Write-Host "Build:"
-          Write-Host "$env:BUILD_VERSION"
+          Write-Host $env:BUILD_VERSION
 
           Write-Host ""
           Write-Host "Solutions:"
           Write-Host "${{ inputs.solutionNames }}"
 
           Write-Host ""
-          Write-Host "Repository location:"
-          Write-Host "Solutions/<SolutionName>/$env:BUILD_VERSION/"
+          Write-Host "Update Version:"
+          Write-Host "${{ inputs.updateVersion }}"
 
           Write-Host ""
-          Write-Host "Deployment artifact:"
+          Write-Host "Repository:"
+          Write-Host "Source + deployment ZIPs committed to GitHub"
+
+          Write-Host ""
+          Write-Host "GitHub Artifact:"
           Write-Host "powerplatform-solutions-$env:BUILD_VERSION"
 
           Write-Host ""
-          Write-Host "Solution Checker artifact:"
-          Write-Host "solution-checker-$env:BUILD_VERSION"
-
-          Write-Host ""
-          Write-Host "======================================================"
+          Write-Host "============================================================"
