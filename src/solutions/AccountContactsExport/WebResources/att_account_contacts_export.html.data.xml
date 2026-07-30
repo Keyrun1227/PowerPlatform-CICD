@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WebResource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <WebResourceId>{82e4e95e-6c6a-f111-ab0c-002248d6085d}</WebResourceId>
+  <Name>att_account_contacts_export.html</Name>
+  <DisplayName>Account Contacts Export</DisplayName>
+  <Description>HTML web resource for Account form - displays Account details and related Contacts with CSV/Excel export</Description>
+  <LanguageCode>0</LanguageCode>
+  <WebResourceType>1</WebResourceType>
+  <IntroducedVersion>1.0.0.0</IntroducedVersion>
+  <IsEnabledForMobileClient>0</IsEnabledForMobileClient>
+  <IsAvailableForMobileOffline>0</IsAvailableForMobileOffline>
+  <IsCustomizable>1</IsCustomizable>
+  <CanBeDeleted>1</CanBeDeleted>
+  <IsHidden>0</IsHidden>
+  <FileName>/WebResources/att_account_contacts_exporthtml82E4E95E-6C6A-F111-AB0C-002248D6085D</FileName>
+</WebResource>

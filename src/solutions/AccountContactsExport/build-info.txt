@@ -1,0 +1,5 @@
+Solution Name : AccountContactsExport
+Build         : Build102
+Version       : 1.0.70.0
+Managed ZIP   : AccountContactsExport_managed.zip
+Unmanaged ZIP : AccountContactsExport_unmanaged.zip

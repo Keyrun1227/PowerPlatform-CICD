@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Account Contact Dashboard</title>
+
+    <script src="ClientGlobalContext.js.aspx"></script>
+    <script src="/WebResources/att_new_exceljs"></script>
+
+    <style>
+
+        h2 {
+            color: #2b579a;
+        }
+
+        html, body {
+            margin: 5px;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            table-layout: fixed;
+            word-wrap: break-word;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background-color: #2b579a;
+            color: white;
+            z-index: 1;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f5f5f5;
+        }
+
+        .collapsible {
+            background-color: #2b579a;
+            color: white;
+            cursor: pointer;
+            padding: 12px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            font-size: 16px;
+        }
+
+        .content {
+            display: block;
+            overflow: hidden;
+        }
+
+        .btn {
+            background-color: #107c10;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="collapsible">
+        Accounts ▼
+    </button>
+
+    <div class="content">
+        <table id="accountTable">
+            <thead>
+                <tr>
+                    <th>Account Name</th>
+                    <th>City</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Account Number</th>
+                    <th>Created On</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <h2>Contact Information</h2>
+
+    <button class="btn" onclick="exportContactsExcel()">
+        Export Contacts to Excel
+    </button>
+
+    <table id="contactTable">
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>City</th>
+                <th>Email</th>
+                <th>Mobile</th>
+                <th>Job Title</th>
+                <th>Created On</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+
+        let contactsData = [];
+
+        // Load data on page load
+        window.onload = async function () {
+            await loadAccounts();
+            await loadContacts();
+        };
+
+        // Collapsible section
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelector(".collapsible")
+                .addEventListener("click", function () {
+
+                    let content =
+                        document.querySelector(".content");
+
+                    if (content.style.display === "none") {
+                        content.style.display = "block";
+                        this.innerHTML = "Accounts ▼";
+                    }
+                    else {
+                        content.style.display = "none";
+                        this.innerHTML = "Accounts ▶";
+                    }
+                });
+        });
+
+        // Load Accounts
+        async function loadAccounts() {
+
+            try {
+
+                let query =
+                    "?$select=name,address1_city,telephone1,emailaddress1,accountnumber,createdon";
+
+                let result =
+                    await parent.Xrm.WebApi.retrieveMultipleRecords(
+                        "account",
+                        query
+                    );
+
+                let tbody =
+                    document.querySelector("#accountTable tbody");
+
+                tbody.innerHTML = "";
+
+                result.entities.forEach(function (acc) {
+
+                    let row = `<tr>
+                        <td>${acc.name || ""}</td>
+                        <td>${acc.address1_city || ""}</td>
+                        <td>${acc.telephone1 || ""}</td>
+                        <td>${acc.emailaddress1 || ""}</td>
+                        <td>${acc.accountnumber || ""}</td>
+                        <td>${acc.createdon ? new Date(acc.createdon).toLocaleDateString() : ""}</td>
+                    </tr>`;
+
+                    tbody.innerHTML += row;
+                });
+
+            }
+            catch (e) {
+                console.error("Accounts Error:", e);
+            }
+        }
+
+        // Load Contacts
+        async function loadContacts() {
+
+            try {
+
+                let query =
+                    "?$select=fullname,address1_city,emailaddress1,mobilephone,jobtitle,createdon";
+
+                let result =
+                    await parent.Xrm.WebApi.retrieveMultipleRecords(
+                        "contact",
+                        query
+                    );
+
+                contactsData = result.entities;
+
+                let tbody =
+                    document.querySelector("#contactTable tbody");
+
+                tbody.innerHTML = "";
+
+                contactsData.forEach(function (c) {
+
+                    let row = `<tr>
+                        <td>${c.fullname || ""}</td>
+                        <td>${c.address1_city || ""}</td>
+                        <td>${c.emailaddress1 || ""}</td>
+                        <td>${c.mobilephone || ""}</td>
+                        <td>${c.jobtitle || ""}</td>
+                        <td>${c.createdon ? new Date(c.createdon).toLocaleDateString() : ""}</td>
+                    </tr>`;
+
+                    tbody.innerHTML += row;
+                });
+
+            }
+            catch (e) {
+                console.error("Contacts Error:", e);
+            }
+        }
+
+        async function exportContactsExcel() {
+            
+
+            if (typeof ExcelJS === "undefined") {
+                alert("ExcelJS library not loaded.");
+                return;
+            }
+
+            const workbook = new ExcelJS.Workbook();
+
+            const worksheet =
+                workbook.addWorksheet("Contacts");
+
+            worksheet.columns = [
+                { header: "Full Name", key: "fullname", width: 25 },
+                { header: "City", key: "city", width: 20 },
+                { header: "Email", key: "email", width: 35 },
+                { header: "Mobile", key: "mobile", width: 20 },
+                { header: "Job Title", key: "job", width: 25 },
+                { header: "Created On", key: "created", width: 20 }
+            ];
+
+            // Header style
+            worksheet.getRow(1).eachCell(cell => {
+                cell.font = {
+                    bold: true,
+                    color: { argb: "FFFFFF" }
+                };
+
+                cell.fill = {
+                    type: "pattern",
+                    pattern: "solid",
+                    fgColor: { argb: "2B579A" }
+                };
+            });
+
+            contactsData.forEach(c => {
+
+                let row = worksheet.addRow({
+                    fullname: c.fullname || "",
+                    city: c.address1_city || "",
+                    email: c.emailaddress1 || "",
+                    mobile: c.mobilephone || "",
+                    job: c.jobtitle || "",
+                    created:
+                        c.createdon
+                            ? new Date(c.createdon).toLocaleDateString()
+                            : ""
+                });
+
+                let city =
+                    (c.address1_city || "").toLowerCase();
+
+                let color = "FFFFFF";
+
+                if (city.includes("hyderabad")) {
+                    color = "FFF2CC"; // Yellow
+                }
+                else if (city.includes("bengaluru")) {
+                    color = "D9EAD3"; // Green
+                }
+                else if (city.includes("kolkata")) {
+                    color = "CFE2F3"; // Blue
+                }
+                else {
+                    color = "F4CCCC"; // Red
+                }
+
+                row.eachCell(cell => {
+
+                    cell.fill = {
+                        type: "pattern",
+                        pattern: "solid",
+                        fgColor: { argb: color }
+                    };
+
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+
+                });
+
+            });
+
+            worksheet.autoFilter = {
+                from: 'A1',
+                to: 'F1'
+            };
+
+            const buffer =
+                await workbook.xlsx.writeBuffer();
+
+            const blob = new Blob(
+                [buffer],
+                {
+                    type:
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                }
+            );
+
+            const link =
+                document.createElement("a");
+
+            link.href =
+                URL.createObjectURL(blob);
+
+            link.download =
+                "Contacts.xlsx";
+
+            link.click();
+            }
+
+    </script>
+
+</body>
+</html>
