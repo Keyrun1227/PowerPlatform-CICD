@@ -29,6 +29,8 @@ jobs:
 
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
 
       # ==========================================
@@ -73,12 +75,98 @@ jobs:
 
 
       # ==========================================
-      # 6. AUTHENTICATE TO DEV
+      # 6. READ AND INCREMENT BUILD NUMBER
+      # ==========================================
+
+      - name: Read and Increment Build Number
+        shell: pwsh
+        run: |
+
+          if (-not (Test-Path "build.txt")) {
+              Write-Error "build.txt was not found."
+              exit 1
+          }
+
+          $currentBuild = (Get-Content "build.txt" -Raw).Trim()
+
+          Write-Host "Current build value: $currentBuild"
+
+          if ($currentBuild -match '^Build(\d+)$') {
+
+              $buildNumber = [int]$Matches[1]
+
+              $newBuildNumber = $buildNumber + 1
+
+              $newBuild = "Build$newBuildNumber"
+
+              Write-Host "New build value: $newBuild"
+
+              Set-Content -Path "build.txt" -Value $newBuild
+
+              "BUILD_VERSION=$newBuild" |
+                Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+
+              "BUILD_NUMBER=$newBuildNumber" |
+                Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+          }
+          else {
+
+              Write-Error "Invalid build.txt format."
+              Write-Error "Expected format: Build100"
+              exit 1
+          }
+
+
+      # ==========================================
+      # 7. DISPLAY BUILD VERSION
+      # ==========================================
+
+      - name: Display Build Version
+        shell: pwsh
+        run: |
+
+          Write-Host "========================================="
+          Write-Host "BUILD VERSION"
+          Write-Host "========================================="
+
+          Write-Host "Build Version : $env:BUILD_VERSION"
+          Write-Host "Build Number  : $env:BUILD_NUMBER"
+
+
+      # ==========================================
+      # 8. COMMIT UPDATED BUILD NUMBER
+      # ==========================================
+
+      - name: Commit Updated Build Number
+        shell: pwsh
+        run: |
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add build.txt
+
+          if (git diff --cached --quiet) {
+
+              Write-Host "No build.txt changes to commit."
+
+          }
+          else {
+
+              git commit -m "Update build number to $env:BUILD_VERSION"
+
+              git push origin HEAD:main
+          }
+
+
+      # ==========================================
+      # 9. AUTHENTICATE TO DEV
       # ==========================================
 
       - name: Authenticate to DEV
         shell: pwsh
         run: |
+
           pac auth create `
             --applicationId "${{ secrets.CLIENT_ID }}" `
             --clientSecret "${{ secrets.CLIENT_SECRET }}" `
@@ -87,7 +175,7 @@ jobs:
 
 
       # ==========================================
-      # 7. VERIFY AUTHENTICATION
+      # 10. VERIFY AUTHENTICATION
       # ==========================================
 
       - name: Verify Authentication
@@ -97,24 +185,33 @@ jobs:
 
 
       # ==========================================
-      # 8. CREATE OUTPUT FOLDERS
+      # 11. CREATE OUTPUT FOLDERS
       # ==========================================
 
       - name: Create Output Folders
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path "./output/managed"
-          New-Item -ItemType Directory -Force -Path "./output/unmanaged"
+
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path "./output/managed"
+
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path "./output/unmanaged"
 
 
       # ==========================================
-      # 9. EXPORT SOLUTIONS
+      # 12. EXPORT MANAGED + UNMANAGED SOLUTIONS
       # ==========================================
 
       - name: Export Solutions
         shell: pwsh
         env:
           SOLUTION_NAMES: ${{ inputs.solutionNames }}
+
         run: |
 
           $solutions = $env:SOLUTION_NAMES -split ','
@@ -127,13 +224,16 @@ jobs:
                   continue
               }
 
+              Write-Host ""
               Write-Host "========================================="
-              Write-Host "Processing solution: $solution"
+              Write-Host "Processing Solution: $solution"
+              Write-Host "Build Version: $env:BUILD_VERSION"
               Write-Host "========================================="
 
-              # ----------------------------------
+
+              # ======================================
               # MANAGED EXPORT
-              # ----------------------------------
+              # ======================================
 
               Write-Host "Exporting MANAGED solution..."
 
@@ -143,16 +243,18 @@ jobs:
                 --managed
 
               if ($LASTEXITCODE -ne 0) {
+
                   Write-Error "Managed export failed for $solution"
+
                   exit 1
               }
 
-              Write-Host "Managed export completed."
+              Write-Host "Managed export completed successfully."
 
 
-              # ----------------------------------
+              # ======================================
               # UNMANAGED EXPORT
-              # ----------------------------------
+              # ======================================
 
               Write-Host "Exporting UNMANAGED solution..."
 
@@ -161,35 +263,65 @@ jobs:
                 --path "./output/unmanaged/${solution}_unmanaged.zip"
 
               if ($LASTEXITCODE -ne 0) {
+
                   Write-Error "Unmanaged export failed for $solution"
+
                   exit 1
               }
 
-              Write-Host "Unmanaged export completed."
+              Write-Host "Unmanaged export completed successfully."
           }
 
 
       # ==========================================
-      # 10. DISPLAY EXPORTED FILES
+      # 13. DISPLAY EXPORTED FILES
       # ==========================================
 
       - name: Display Exported Solutions
         shell: pwsh
         run: |
+
+          Write-Host ""
           Write-Host "========================================="
           Write-Host "EXPORTED SOLUTIONS"
           Write-Host "========================================="
 
-          Get-ChildItem -Path "./output" -Recurse
+          Get-ChildItem `
+            -Path "./output" `
+            -Recurse
 
 
       # ==========================================
-      # 11. UPLOAD ARTIFACT
+      # 14. CREATE BUILD MANIFEST
+      # ==========================================
+
+      - name: Create Build Manifest
+        shell: pwsh
+        run: |
+
+          $manifest = @{
+              BuildVersion = $env:BUILD_VERSION
+              BuildNumber  = $env:BUILD_NUMBER
+              Solutions    = "${{ inputs.solutionNames }}"
+              CreatedAt    = (Get-Date).ToUniversalTime().ToString("o")
+              Source       = "DEV"
+          }
+
+          $manifest |
+            ConvertTo-Json -Depth 5 |
+            Out-File "./output/build-manifest.json" -Encoding utf8
+
+          Write-Host "Build manifest created."
+
+
+      # ==========================================
+      # 15. UPLOAD GITHUB ARTIFACT
       # ==========================================
 
       - name: Upload Solution Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: powerplatform-solutions
+          name: powerplatform-solutions-${{ env.BUILD_VERSION }}
           path: ./output
           if-no-files-found: error
+          retention-days: 30
