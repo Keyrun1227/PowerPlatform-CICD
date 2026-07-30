@@ -1,0 +1,195 @@
+name: ATT Export Solution
+
+on:
+  workflow_dispatch:
+    inputs:
+
+      solutionNames:
+        description: 'Enter solution name(s), comma separated'
+        required: true
+        type: string
+
+      updateVersion:
+        description: 'Update solution version?'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+
+  export-solution:
+
+    runs-on: windows-latest
+
+    steps:
+
+      # ==========================================
+      # 1. CHECKOUT REPOSITORY
+      # ==========================================
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+
+      # ==========================================
+      # 2. INSTALL .NET
+      # ==========================================
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+
+      # ==========================================
+      # 3. INSTALL POWER PLATFORM CLI
+      # ==========================================
+
+      - name: Install Power Platform CLI
+        shell: pwsh
+        run: |
+          dotnet tool install --global Microsoft.PowerApps.CLI.Tool
+
+
+      # ==========================================
+      # 4. ADD PAC TO PATH
+      # ==========================================
+
+      - name: Add PAC to PATH
+        shell: pwsh
+        run: |
+          echo "$env:USERPROFILE\.dotnet\tools" |
+            Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+
+      # ==========================================
+      # 5. VERIFY PAC
+      # ==========================================
+
+      - name: Verify PAC Installation
+        shell: pwsh
+        run: |
+          pac help
+
+
+      # ==========================================
+      # 6. AUTHENTICATE TO DEV
+      # ==========================================
+
+      - name: Authenticate to DEV
+        shell: pwsh
+        run: |
+          pac auth create `
+            --applicationId "${{ secrets.CLIENT_ID }}" `
+            --clientSecret "${{ secrets.CLIENT_SECRET }}" `
+            --tenant "${{ secrets.TENANT_ID }}" `
+            --environment "${{ secrets.DEV_URL }}"
+
+
+      # ==========================================
+      # 7. VERIFY AUTHENTICATION
+      # ==========================================
+
+      - name: Verify Authentication
+        shell: pwsh
+        run: |
+          pac auth list
+
+
+      # ==========================================
+      # 8. CREATE OUTPUT FOLDERS
+      # ==========================================
+
+      - name: Create Output Folders
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "./output/managed"
+          New-Item -ItemType Directory -Force -Path "./output/unmanaged"
+
+
+      # ==========================================
+      # 9. EXPORT SOLUTIONS
+      # ==========================================
+
+      - name: Export Solutions
+        shell: pwsh
+        env:
+          SOLUTION_NAMES: ${{ inputs.solutionNames }}
+        run: |
+
+          $solutions = $env:SOLUTION_NAMES -split ','
+
+          foreach ($solution in $solutions) {
+
+              $solution = $solution.Trim()
+
+              if ([string]::IsNullOrWhiteSpace($solution)) {
+                  continue
+              }
+
+              Write-Host "========================================="
+              Write-Host "Processing solution: $solution"
+              Write-Host "========================================="
+
+              # ----------------------------------
+              # MANAGED EXPORT
+              # ----------------------------------
+
+              Write-Host "Exporting MANAGED solution..."
+
+              pac solution export `
+                --name "$solution" `
+                --path "./output/managed/${solution}_managed.zip" `
+                --managed
+
+              if ($LASTEXITCODE -ne 0) {
+                  Write-Error "Managed export failed for $solution"
+                  exit 1
+              }
+
+              Write-Host "Managed export completed."
+
+
+              # ----------------------------------
+              # UNMANAGED EXPORT
+              # ----------------------------------
+
+              Write-Host "Exporting UNMANAGED solution..."
+
+              pac solution export `
+                --name "$solution" `
+                --path "./output/unmanaged/${solution}_unmanaged.zip"
+
+              if ($LASTEXITCODE -ne 0) {
+                  Write-Error "Unmanaged export failed for $solution"
+                  exit 1
+              }
+
+              Write-Host "Unmanaged export completed."
+          }
+
+
+      # ==========================================
+      # 10. DISPLAY EXPORTED FILES
+      # ==========================================
+
+      - name: Display Exported Solutions
+        shell: pwsh
+        run: |
+          Write-Host "========================================="
+          Write-Host "EXPORTED SOLUTIONS"
+          Write-Host "========================================="
+
+          Get-ChildItem -Path "./output" -Recurse
+
+
+      # ==========================================
+      # 11. UPLOAD ARTIFACT
+      # ==========================================
+
+      - name: Upload Solution Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: powerplatform-solutions
+          path: ./output
+          if-no-files-found: error
