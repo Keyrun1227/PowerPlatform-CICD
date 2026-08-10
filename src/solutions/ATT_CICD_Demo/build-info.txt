@@ -1,0 +1,5 @@
+Solution Name : ATT_CICD_Demo
+Build         : Build103
+Version       : 1.0.0.1
+Managed ZIP   : ATT_CICD_Demo_managed.zip
+Unmanaged ZIP : ATT_CICD_Demo_unmanaged.zip
