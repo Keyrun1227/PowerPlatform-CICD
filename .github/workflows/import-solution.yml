@@ -38,27 +38,15 @@ on:
           - PROD
 
 
-# ============================================================
-# PERMISSIONS
-# ============================================================
-
 permissions:
   contents: read
   actions: read
 
 
-# ============================================================
-# CONCURRENCY
-# ============================================================
-
 concurrency:
   group: att-import-${{ inputs.targetEnvironment }}
   cancel-in-progress: false
 
-
-# ============================================================
-# JOB
-# ============================================================
 
 jobs:
 
@@ -68,9 +56,9 @@ jobs:
 
     steps:
 
-      # ========================================================
+      # ============================================================
       # 1. DISPLAY DEPLOYMENT INFORMATION
-      # ========================================================
+      # ============================================================
 
       - name: Display Deployment Information
         shell: pwsh
@@ -101,9 +89,9 @@ jobs:
           Write-Host "======================================================"
 
 
-      # ========================================================
+      # ============================================================
       # 2. CHECKOUT REPOSITORY
-      # ========================================================
+      # ============================================================
 
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -111,9 +99,9 @@ jobs:
           fetch-depth: 0
 
 
-      # ========================================================
+      # ============================================================
       # 3. INSTALL .NET
-      # ========================================================
+      # ============================================================
 
       - name: Install .NET
         uses: actions/setup-dotnet@v4
@@ -121,9 +109,9 @@ jobs:
           dotnet-version: "8.0.x"
 
 
-      # ========================================================
+      # ============================================================
       # 4. INSTALL POWER PLATFORM CLI
-      # ========================================================
+      # ============================================================
 
       - name: Install Power Platform CLI
         shell: pwsh
@@ -139,16 +127,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
 
               Write-Error "Power Platform CLI installation failed."
-
               exit 1
           }
 
+          Write-Host ""
+          Write-Host "Power Platform CLI installed successfully."
 
-      # ========================================================
+
+      # ============================================================
       # 5. ADD PAC TO PATH
-      # ========================================================
+      # ============================================================
 
-      - name: Add PAC to PATH
+      - name: Add PAC To PATH
         shell: pwsh
         run: |
 
@@ -165,9 +155,9 @@ jobs:
               -Append
 
 
-      # ========================================================
+      # ============================================================
       # 6. VERIFY PAC
-      # ========================================================
+      # ============================================================
 
       - name: Verify PAC Installation
         shell: pwsh
@@ -183,14 +173,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
 
               Write-Error "PAC CLI verification failed."
-
               exit 1
           }
 
+          Write-Host ""
+          Write-Host "PAC CLI is available."
 
-      # ========================================================
+
+      # ============================================================
       # 7. FIND MATCHING SUCCESSFUL EXPORT
-      # ========================================================
+      # ============================================================
 
       - name: Find Matching Successful Export
         shell: pwsh
@@ -229,10 +221,6 @@ jobs:
           }
 
 
-          # ======================================================
-          # GET SUCCESSFUL EXPORT RUNS
-          # ======================================================
-
           $runsUrl =
             "https://api.github.com/repos/$env:REPOSITORY/actions/workflows/export-solution.yml/runs?status=success&per_page=100"
 
@@ -255,7 +243,6 @@ jobs:
 
               Write-Error "Unable to query GitHub Export workflow."
               Write-Error $_
-
               exit 1
           }
 
@@ -263,7 +250,6 @@ jobs:
           if ($null -eq $response.workflow_runs) {
 
               Write-Error "GitHub returned no workflow runs."
-
               exit 1
           }
 
@@ -287,10 +273,6 @@ jobs:
               exit 1
           }
 
-
-          # ======================================================
-          # SEARCH NEWEST RUNS FIRST
-          # ======================================================
 
           $successfulRuns =
             $successfulRuns |
@@ -360,10 +342,6 @@ jobs:
                   }
 
 
-                  # ==================================================
-                  # DOWNLOAD CANDIDATE ARTIFACT
-                  # ==================================================
-
                   $candidateDirectory =
                     "./candidate-artifact"
 
@@ -410,10 +388,6 @@ jobs:
                   }
 
 
-                  # ==================================================
-                  # EXTRACT CANDIDATE
-                  # ==================================================
-
                   $candidateExtract =
                     "$candidateDirectory/extracted"
 
@@ -442,10 +416,6 @@ jobs:
                       continue
                   }
 
-
-                  # ==================================================
-                  # FIND METADATA
-                  # ==================================================
 
                   $metadata =
                     Get-ChildItem `
@@ -492,10 +462,6 @@ jobs:
                   Write-Host $metadataObject.build
 
 
-                  # ==================================================
-                  # VERIFY SOURCE
-                  # ==================================================
-
                   if (
                     $metadataObject.sourceEnvironment `
                     -ne `
@@ -508,10 +474,6 @@ jobs:
                       continue
                   }
 
-
-                  # ==================================================
-                  # VERIFY SOLUTION
-                  # ==================================================
 
                   $solutionMatch = $false
 
@@ -528,7 +490,6 @@ jobs:
                       ) {
 
                           $solutionMatch = $true
-
                           break
                       }
                   }
@@ -542,10 +503,6 @@ jobs:
                       continue
                   }
 
-
-                  # ==================================================
-                  # MATCH FOUND
-                  # ==================================================
 
                   $matchingRun =
                     $run
@@ -582,6 +539,7 @@ jobs:
                   Write-Host ""
                   Write-Host "======================================================"
 
+
                   break
               }
 
@@ -591,10 +549,6 @@ jobs:
               }
           }
 
-
-          # ======================================================
-          # FAIL IF NOTHING FOUND
-          # ======================================================
 
           if ($null -eq $matchingRun) {
 
@@ -617,10 +571,6 @@ jobs:
               exit 1
           }
 
-
-          # ======================================================
-          # SAVE MATCH
-          # ======================================================
 
           "EXPORT_RUN_ID=$($matchingRun.id)" |
             Out-File `
@@ -657,9 +607,9 @@ jobs:
               -Append
 
 
-      # ========================================================
+      # ============================================================
       # 8. DOWNLOAD SELECTED EXPORT ARTIFACT
-      # ========================================================
+      # ============================================================
 
       - name: Download Export Artifact
         shell: pwsh
@@ -675,7 +625,6 @@ jobs:
           Write-Host "======================================================"
           Write-Host "DOWNLOADING SELECTED EXPORT ARTIFACT"
           Write-Host "======================================================"
-
 
           Write-Host ""
           Write-Host "Artifact:"
@@ -722,7 +671,6 @@ jobs:
 
               Write-Error "Failed to download Export artifact."
               Write-Error $_
-
               exit 1
           }
 
@@ -730,19 +678,17 @@ jobs:
           if (-not (Test-Path $artifactZip)) {
 
               Write-Error "Downloaded artifact ZIP was not found."
-
               exit 1
           }
 
 
           Write-Host ""
-          Write-Host "Artifact downloaded:"
-          Write-Host $artifactZip
+          Write-Host "Artifact downloaded successfully."
 
 
-      # ========================================================
+      # ============================================================
       # 9. EXTRACT ARTIFACT
-      # ========================================================
+      # ============================================================
 
       - name: Extract Export Artifact
         shell: pwsh
@@ -765,10 +711,20 @@ jobs:
             Out-Null
 
 
-          Expand-Archive `
-            -Path "./deployment-artifact/export-artifact.zip" `
-            -DestinationPath $extractPath `
-            -Force
+          try {
+
+              Expand-Archive `
+                -Path "./deployment-artifact/export-artifact.zip" `
+                -DestinationPath $extractPath `
+                -Force
+
+          }
+          catch {
+
+              Write-Error "Failed to extract deployment artifact."
+              Write-Error $_
+              exit 1
+          }
 
 
           Write-Host ""
@@ -781,9 +737,9 @@ jobs:
             Select-Object FullName
 
 
-      # ========================================================
+      # ============================================================
       # 10. VERIFY ARTIFACT METADATA
-      # ========================================================
+      # ============================================================
 
       - name: Verify Artifact Metadata
         shell: pwsh
@@ -813,21 +769,31 @@ jobs:
           if ($null -eq $metadata) {
 
               Write-Error "export-metadata.json was not found."
-
               exit 1
           }
 
 
-          $metadataObject =
-            Get-Content `
-              $metadata.FullName `
-              -Raw |
-            ConvertFrom-Json
+          try {
+
+              $metadataObject =
+                Get-Content `
+                  $metadata.FullName `
+                  -Raw |
+                ConvertFrom-Json
+
+          }
+          catch {
+
+              Write-Error "Unable to read export-metadata.json."
+              Write-Error $_
+              exit 1
+          }
 
 
           Write-Host ""
           Write-Host "Artifact Source:"
           Write-Host $metadataObject.sourceEnvironment
+
 
           Write-Host ""
           Write-Host "Requested Source:"
@@ -840,9 +806,7 @@ jobs:
             $env:SOURCE_ENVIRONMENT
           ) {
 
-              Write-Error `
-                "Artifact source environment does not match."
-
+              Write-Error "Artifact source environment does not match."
               exit 1
           }
 
@@ -862,7 +826,6 @@ jobs:
               ) {
 
                   $solutionFound = $true
-
                   break
               }
           }
@@ -871,8 +834,7 @@ jobs:
           if (-not $solutionFound) {
 
               Write-Error ""
-              Write-Error `
-                "Requested solution was not found in artifact."
+              Write-Error "Requested solution was not found in artifact."
 
               Write-Error ""
               Write-Error "Requested:"
@@ -886,9 +848,9 @@ jobs:
           Write-Host "Artifact verification successful."
 
 
-      # ========================================================
+      # ============================================================
       # 11. FIND SELECTED SOLUTION PACKAGE
-      # ========================================================
+      # ============================================================
 
       - name: Find Selected Solution Package
         shell: pwsh
@@ -959,7 +921,6 @@ jobs:
 
           if ($packages.Count -gt 1) {
 
-              Write-Error ""
               Write-Error "Multiple packages matched the selected solution."
 
               foreach ($package in $packages) {
@@ -986,9 +947,496 @@ jobs:
               -Append
 
 
-      # ========================================================
-      # 12. LOAD DEPLOYMENT SETTINGS
-      # ========================================================
+      # ============================================================
+      # 12. DETECT SOLUTION COMPONENTS
+      #
+      # This is the important new step.
+      #
+      # The solution package is inspected before any optional
+      # ATT/CCaaS-specific deployment operation is executed.
+      # ============================================================
+
+      - name: Detect Solution Components
+        shell: pwsh
+        run: |
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "DETECTING SOLUTION COMPONENTS"
+          Write-Host "======================================================"
+
+
+          $solutionPackage =
+            $env:SOLUTION_PACKAGE
+
+
+          if ([string]::IsNullOrWhiteSpace($solutionPackage)) {
+
+              Write-Error "SOLUTION_PACKAGE is empty."
+              exit 1
+          }
+
+
+          if (-not (Test-Path $solutionPackage)) {
+
+              Write-Error "Solution package does not exist:"
+              Write-Error $solutionPackage
+              exit 1
+          }
+
+
+          $inspectionRoot =
+            Join-Path `
+              $env:RUNNER_TEMP `
+              "att-solution-inspection"
+
+
+          if (Test-Path $inspectionRoot) {
+
+              Remove-Item `
+                -Path $inspectionRoot `
+                -Recurse `
+                -Force
+          }
+
+
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path $inspectionRoot |
+            Out-Null
+
+
+          Write-Host ""
+          Write-Host "Inspecting:"
+          Write-Host $solutionPackage
+
+
+          try {
+
+              Expand-Archive `
+                -Path $solutionPackage `
+                -DestinationPath $inspectionRoot `
+                -Force
+
+          }
+          catch {
+
+              Write-Error "Unable to inspect solution package."
+              Write-Error $_
+              exit 1
+          }
+
+
+          # ----------------------------------------------------------
+          # Default flags
+          # ----------------------------------------------------------
+
+          $hasConnectionReferences = $false
+          $hasCustomConnectors = $false
+          $hasCopilot = $false
+          $hasM2M = $false
+
+
+          # ----------------------------------------------------------
+          # Read solution XML if available
+          # ----------------------------------------------------------
+
+          $customizationsFiles =
+            @(
+                Get-ChildItem `
+                  -Path $inspectionRoot `
+                  -Filter "customizations.xml" `
+                  -Recurse `
+                  -File
+            )
+
+
+          $xmlText = ""
+
+
+          foreach ($customizationsFile in $customizationsFiles) {
+
+              try {
+
+                  $xmlText +=
+                    Get-Content `
+                      $customizationsFile.FullName `
+                      -Raw
+
+              }
+              catch {
+
+                  Write-Host ""
+                  Write-Host "Unable to read:"
+                  Write-Host $customizationsFile.FullName
+              }
+          }
+
+
+          $xmlLower =
+            $xmlText.ToLowerInvariant()
+
+
+          # ----------------------------------------------------------
+          # Connection references
+          #
+          # Known Dataverse solution component type:
+          # 3802 = Connection Reference
+          # ----------------------------------------------------------
+
+          if (
+            $xmlLower -match
+            'type\s*=\s*["'']3802["'']'
+          ) {
+
+              $hasConnectionReferences = $true
+          }
+
+
+          if (
+            $xmlLower -match
+            'connectionreference'
+          ) {
+
+              $hasConnectionReferences = $true
+          }
+
+
+          # ----------------------------------------------------------
+          # Custom connectors
+          #
+          # Known solution component type:
+          # 372 = Connector
+          # ----------------------------------------------------------
+
+          if (
+            $xmlLower -match
+            'type\s*=\s*["'']372["'']'
+          ) {
+
+              $hasCustomConnectors = $true
+          }
+
+
+          if (
+            $xmlLower -match
+            'customconnector'
+          ) {
+
+              $hasCustomConnectors = $true
+          }
+
+
+          if (
+            $xmlLower -match
+            'connector'
+          ) {
+
+              $connectorIndicators =
+                @(
+                    "connector",
+                    "customconnector",
+                    "connectionreference"
+                )
+
+              foreach ($indicator in $connectorIndicators) {
+
+                  if ($xmlLower.Contains($indicator)) {
+
+                      if ($indicator -eq "connector") {
+
+                          # Avoid treating generic connection-reference
+                          # text as a custom connector.
+                          if (
+                            $xmlLower -match
+                            'customconnector'
+                          ) {
+                              $hasCustomConnectors = $true
+                          }
+
+                      }
+                      else {
+
+                          if ($indicator -eq "customconnector") {
+                              $hasCustomConnectors = $true
+                          }
+                      }
+                  }
+              }
+          }
+
+
+          # ----------------------------------------------------------
+          # Copilot / Bot detection
+          #
+          # We deliberately inspect the package instead of running:
+          #
+          #     pac copilot --help
+          #
+          # This prevents Copilot CLI errors for normal solutions.
+          # ----------------------------------------------------------
+
+          $copilotFilePatterns =
+            @(
+                "*bot*.json",
+                "*bot*.xml",
+                "*bot*.yaml",
+                "*bot*.yml",
+                "*copilot*.json",
+                "*copilot*.xml",
+                "*copilot*.yaml",
+                "*copilot*.yml"
+            )
+
+
+          foreach ($pattern in $copilotFilePatterns) {
+
+              $botFiles =
+                @(
+                    Get-ChildItem `
+                      -Path $inspectionRoot `
+                      -Recurse `
+                      -File `
+                      -Filter $pattern `
+                      -ErrorAction SilentlyContinue
+                )
+
+              if ($botFiles.Count -gt 0) {
+
+                  $hasCopilot = $true
+
+                  break
+              }
+          }
+
+
+          # Also inspect directory names commonly used by
+          # Copilot Studio solution packages.
+
+          $allDirectories =
+            @(
+                Get-ChildItem `
+                  -Path $inspectionRoot `
+                  -Recurse `
+                  -Directory `
+                  -ErrorAction SilentlyContinue
+            )
+
+
+          foreach ($directory in $allDirectories) {
+
+              $directoryName =
+                $directory.Name.ToLowerInvariant()
+
+              if (
+                $directoryName -eq "bots" -or
+                $directoryName -eq "botcomponents" -or
+                $directoryName -eq "copilot" -or
+                $directoryName -eq "copilots"
+              ) {
+
+                  $hasCopilot = $true
+                  break
+              }
+          }
+
+
+          # ----------------------------------------------------------
+          # M2M / chatbot relationship detection
+          #
+          # M2M logic is normally represented through relationship
+          # components. We do not automatically treat every normal
+          # Dataverse relationship as an ATT chatbot relationship.
+          #
+          # Existing ATT script is therefore only enabled when
+          # obvious chatbot/bot indicators are present.
+          # ----------------------------------------------------------
+
+          if ($hasCopilot) {
+
+              $hasM2M = $true
+          }
+
+
+          if (
+            $xmlLower -match
+            'manytomany'
+          ) {
+
+              # Do not automatically run ATT M2M repair for every
+              # normal M2M Dataverse relationship.
+              #
+              # Only enable it when chatbot/bot indicators also exist.
+
+              if ($hasCopilot) {
+                  $hasM2M = $true
+              }
+          }
+
+
+          # ----------------------------------------------------------
+          # Display detection result
+          # ----------------------------------------------------------
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "SOLUTION COMPONENT DETECTION"
+          Write-Host "======================================================"
+
+
+          Write-Host ""
+          Write-Host "Connection References:"
+          Write-Host $hasConnectionReferences
+
+
+          Write-Host ""
+          Write-Host "Custom Connectors:"
+          Write-Host $hasCustomConnectors
+
+
+          Write-Host ""
+          Write-Host "Copilot / Agent:"
+          Write-Host $hasCopilot
+
+
+          Write-Host ""
+          Write-Host "M2M / Chatbot Relationships:"
+          Write-Host $hasM2M
+
+
+          Write-Host ""
+          Write-Host "======================================================"
+
+
+          # ----------------------------------------------------------
+          # Save flags for subsequent GitHub Actions steps
+          # ----------------------------------------------------------
+
+          "HAS_CONNECTION_REFERENCES=$($hasConnectionReferences.ToString().ToLower())" |
+            Out-File `
+              -FilePath $env:GITHUB_ENV `
+              -Encoding utf8 `
+              -Append
+
+
+          "HAS_CUSTOM_CONNECTORS=$($hasCustomConnectors.ToString().ToLower())" |
+            Out-File `
+              -FilePath $env:GITHUB_ENV `
+              -Encoding utf8 `
+              -Append
+
+
+          "HAS_COPILOT=$($hasCopilot.ToString().ToLower())" |
+            Out-File `
+              -FilePath $env:GITHUB_ENV `
+              -Encoding utf8 `
+              -Append
+
+
+          "HAS_M2M=$($hasM2M.ToString().ToLower())" |
+            Out-File `
+              -FilePath $env:GITHUB_ENV `
+              -Encoding utf8 `
+              -Append
+
+
+      # ============================================================
+      # 13. DISPLAY DEPLOYMENT PLAN
+      # ============================================================
+
+      - name: Display Deployment Plan
+        shell: pwsh
+        run: |
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "DEPLOYMENT PLAN"
+          Write-Host "======================================================"
+
+
+          Write-Host ""
+          Write-Host "Solution:"
+          Write-Host "${{ inputs.solutionName }}"
+
+
+          Write-Host ""
+          Write-Host "Connection References:"
+          Write-Host $env:HAS_CONNECTION_REFERENCES
+
+
+          Write-Host ""
+          Write-Host "Custom Connectors:"
+          Write-Host $env:HAS_CUSTOM_CONNECTORS
+
+
+          Write-Host ""
+          Write-Host "M2M / Chatbot:"
+          Write-Host $env:HAS_M2M
+
+
+          Write-Host ""
+          Write-Host "Copilot / Agent:"
+          Write-Host $env:HAS_COPILOT
+
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "OPTIONAL COMPONENT PLAN"
+          Write-Host "======================================================"
+
+
+          if ($env:HAS_CUSTOM_CONNECTORS -eq "true") {
+
+              Write-Host "RUN  : Connector host patching."
+
+          }
+          else {
+
+              Write-Host "SKIP : Connector host patching."
+          }
+
+
+          if ($env:HAS_CONNECTION_REFERENCES -eq "true") {
+
+              Write-Host "RUN  : Connection reference resolution."
+
+          }
+          else {
+
+              Write-Host "SKIP : Connection reference resolution."
+          }
+
+
+          if ($env:HAS_M2M -eq "true") {
+
+              Write-Host "RUN  : M2M / chatbot relationship repair."
+
+          }
+          else {
+
+              Write-Host "SKIP : M2M / chatbot relationship repair."
+          }
+
+
+          if ($env:HAS_COPILOT -eq "true") {
+
+              Write-Host "RUN  : Copilot publishing."
+
+          }
+          else {
+
+              Write-Host "SKIP : Copilot publishing."
+          }
+
+
+          Write-Host ""
+          Write-Host "======================================================"
+
+
+      # ============================================================
+      # 14. LOAD DEPLOYMENT SETTINGS
+      # ============================================================
 
       - name: Load Deployment Settings
         shell: pwsh
@@ -1040,11 +1488,7 @@ jobs:
           else {
 
               Write-Host ""
-              Write-Host "WARNING:"
               Write-Host "Deployment settings file was not found."
-
-              Write-Host ""
-              Write-Host "Deployment will continue without deployment settings."
 
 
               "DEPLOYMENT_SETTINGS_FILE=" |
@@ -1052,14 +1496,18 @@ jobs:
                   -FilePath $env:GITHUB_ENV `
                   -Encoding utf8 `
                   -Append
+
+              Write-Host ""
+              Write-Host "Continuing without deployment settings."
           }
 
 
-      # ========================================================
-      # 13. PATCH CONNECTOR HOSTS
-      # ========================================================
+      # ============================================================
+      # 15. PATCH CONNECTOR HOSTS
+      # ============================================================
 
       - name: Patch Connector Hosts
+        if: env.HAS_CUSTOM_CONNECTORS == 'true'
         shell: pwsh
 
         env:
@@ -1074,45 +1522,45 @@ jobs:
           Write-Host "======================================================"
 
 
+          Write-Host "Custom connector detected."
+          Write-Host "Connector host patching is required."
+
+
           $script =
             "./PowershellScripts/patch-connector-host.ps1"
 
 
-          if (Test-Path $script) {
+          if (-not (Test-Path $script)) {
 
-              Write-Host "Running:"
-              Write-Host $script
+              Write-Error ""
+              Write-Error "Custom connector detected but patch script was not found:"
+              Write-Error $script
 
-
-              & $script `
-                -Environment $env:TARGET_ENVIRONMENT
-
-
-              if ($LASTEXITCODE -ne 0) {
-
-                  Write-Error `
-                    "Connector host patching failed."
-
-                  exit 1
-              }
-
-          }
-          else {
-
-              Write-Host ""
-              Write-Host `
-                "patch-connector-host.ps1 not found."
-
-              Write-Host `
-                "Skipping connector host patching."
+              exit 1
           }
 
 
-      # ========================================================
-      # 14. RESOLVE CONNECTION REFERENCES
-      # ========================================================
+          & $script `
+            -Environment $env:TARGET_ENVIRONMENT
+
+
+          if ($LASTEXITCODE -ne 0) {
+
+              Write-Error "Connector host patching failed."
+              exit 1
+          }
+
+
+          Write-Host ""
+          Write-Host "Connector host patching completed successfully."
+
+
+      # ============================================================
+      # 16. RESOLVE CONNECTION REFERENCES
+      # ============================================================
 
       - name: Resolve Connection References
+        if: env.HAS_CONNECTION_REFERENCES == 'true'
         shell: pwsh
 
         env:
@@ -1127,53 +1575,42 @@ jobs:
           Write-Host "======================================================"
 
 
+          Write-Host "Connection references detected."
+          Write-Host "Connection reference resolution is required."
+
+
           $script =
             "./PowershellScripts/resolve-connrefs.ps1"
 
 
-          if (Test-Path $script) {
+          if (-not (Test-Path $script)) {
 
-              Write-Host "Running:"
-              Write-Host $script
+              Write-Error ""
+              Write-Error "Connection references detected but script was not found:"
+              Write-Error $script
 
-
-              & $script `
-                -Environment $env:TARGET_ENVIRONMENT
-
-
-              if ($LASTEXITCODE -ne 0) {
-
-                  Write-Error `
-                    "Connection reference resolution failed."
-
-                  exit 1
-              }
-
-          }
-          else {
-
-              Write-Host ""
-              Write-Host `
-                "resolve-connrefs.ps1 not found."
-
-              Write-Host `
-                "Skipping connection reference resolution."
+              exit 1
           }
 
 
-      # ========================================================
-      # 15. AUTHENTICATE TO TARGET ENVIRONMENT
-      #
-      # IMPORTANT:
-      # We use repository secrets that already exist:
-      #
-      # CCAASTRAIL_URL
-      # DEV_URL
-      # UAT_URL
-      # PROD_URL
-      #
-      # We DO NOT use secrets.ENVIRONMENT_URL anymore.
-      # ========================================================
+          & $script `
+            -Environment $env:TARGET_ENVIRONMENT
+
+
+          if ($LASTEXITCODE -ne 0) {
+
+              Write-Error "Connection reference resolution failed."
+              exit 1
+          }
+
+
+          Write-Host ""
+          Write-Host "Connection reference resolution completed successfully."
+
+
+      # ============================================================
+      # 17. AUTHENTICATE TO TARGET ENVIRONMENT
+      # ============================================================
 
       - name: Authenticate To Target Environment
         shell: pwsh
@@ -1199,19 +1636,9 @@ jobs:
           Write-Host "======================================================"
 
 
-          Write-Host ""
-          Write-Host "Target:"
-          Write-Host $env:TARGET_ENVIRONMENT
-
-
-          # ======================================================
-          # VALIDATE COMMON SECRETS
-          # ======================================================
-
           if ([string]::IsNullOrWhiteSpace($env:CLIENT_ID)) {
 
               Write-Error "CLIENT_ID repository secret is missing."
-
               exit 1
           }
 
@@ -1219,7 +1646,6 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:CLIENT_SECRET)) {
 
               Write-Error "CLIENT_SECRET repository secret is missing."
-
               exit 1
           }
 
@@ -1227,14 +1653,9 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:TENANT_ID)) {
 
               Write-Error "TENANT_ID repository secret is missing."
-
               exit 1
           }
 
-
-          # ======================================================
-          # SELECT TARGET URL
-          # ======================================================
 
           $targetUrl = $null
 
@@ -1245,36 +1666,24 @@ jobs:
 
                   $targetUrl =
                     $env:CCAASTRAIL_URL
-
-                  Write-Host ""
-                  Write-Host "Using CCaaS environment URL."
               }
 
               "DEV" {
 
                   $targetUrl =
                     $env:DEV_URL
-
-                  Write-Host ""
-                  Write-Host "Using DEV environment URL."
               }
 
               "UAT" {
 
                   $targetUrl =
                     $env:UAT_URL
-
-                  Write-Host ""
-                  Write-Host "Using UAT environment URL."
               }
 
               "PROD" {
 
                   $targetUrl =
                     $env:PROD_URL
-
-                  Write-Host ""
-                  Write-Host "Using PROD environment URL."
               }
 
               default {
@@ -1287,10 +1696,6 @@ jobs:
           }
 
 
-          # ======================================================
-          # VALIDATE SELECTED URL
-          # ======================================================
-
           if ([string]::IsNullOrWhiteSpace($targetUrl)) {
 
               Write-Error ""
@@ -1298,16 +1703,11 @@ jobs:
               Write-Error "TARGET ENVIRONMENT URL IS MISSING"
               Write-Error "======================================================"
 
-              Write-Error ""
-              Write-Error "Target Environment:"
-              Write-Error $env:TARGET_ENVIRONMENT
-
-              Write-Error ""
 
               switch ($env:TARGET_ENVIRONMENT) {
 
                   "CCaaS" {
-                      Write-Error "Required repository secret: CCAAstrail_URL"
+                      Write-Error "Required repository secret: CCAASTRAIL_URL"
                   }
 
                   "DEV" {
@@ -1328,13 +1728,14 @@ jobs:
 
 
           Write-Host ""
+          Write-Host "Target environment:"
+          Write-Host $env:TARGET_ENVIRONMENT
+
+
+          Write-Host ""
           Write-Host "Target URL:"
           Write-Host $targetUrl
 
-
-          # ======================================================
-          # AUTHENTICATE
-          # ======================================================
 
           pac auth create `
             --applicationId "$env:CLIENT_ID" `
@@ -1346,16 +1747,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
 
               Write-Error ""
-              Write-Error `
-                "Target environment authentication failed."
-
+              Write-Error "Target environment authentication failed."
               exit 1
           }
 
-
-          # ======================================================
-          # SAVE TARGET URL FOR OTHER STEPS
-          # ======================================================
 
           "TARGET_ENVIRONMENT_URL=$targetUrl" |
             Out-File `
@@ -1365,14 +1760,12 @@ jobs:
 
 
           Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "TARGET AUTHENTICATION SUCCESSFUL"
-          Write-Host "======================================================"
+          Write-Host "Target authentication successful."
 
 
-      # ========================================================
-      # 16. VERIFY TARGET AUTHENTICATION
-      # ========================================================
+      # ============================================================
+      # 18. VERIFY TARGET AUTHENTICATION
+      # ============================================================
 
       - name: Verify Target Authentication
         shell: pwsh
@@ -1389,16 +1782,18 @@ jobs:
 
           if ($LASTEXITCODE -ne 0) {
 
-              Write-Error `
-                "PAC authentication verification failed."
-
+              Write-Error "PAC authentication verification failed."
               exit 1
           }
 
 
-      # ========================================================
-      # 17. IMPORT SELECTED SOLUTION
-      # ========================================================
+          Write-Host ""
+          Write-Host "Target authentication verified."
+
+
+      # ============================================================
+      # 19. IMPORT SELECTED SOLUTION
+      # ============================================================
 
       - name: Import Selected Solution
         shell: pwsh
@@ -1416,9 +1811,7 @@ jobs:
             )
           ) {
 
-              Write-Error `
-                "Solution package path was not found."
-
+              Write-Error "Solution package path was not found."
               exit 1
           }
 
@@ -1426,9 +1819,7 @@ jobs:
           if (-not (Test-Path $env:SOLUTION_PACKAGE)) {
 
               Write-Error ""
-              Write-Error `
-                "Solution package does not exist."
-
+              Write-Error "Solution package does not exist."
               Write-Error $env:SOLUTION_PACKAGE
 
               exit 1
@@ -1463,23 +1854,22 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
 
               Write-Error ""
-              Write-Error `
-                "Solution import failed."
-
-              Write-Error `
-                $env:SOLUTION_PACKAGE
+              Write-Error "Solution import failed."
+              Write-Error $env:SOLUTION_PACKAGE
 
               exit 1
           }
 
 
           Write-Host ""
-          Write-Host "Solution import successful."
+          Write-Host "======================================================"
+          Write-Host "SOLUTION IMPORT SUCCESSFUL"
+          Write-Host "======================================================"
 
 
-      # ========================================================
-      # 18. PUBLISH CUSTOMIZATIONS
-      # ========================================================
+      # ============================================================
+      # 20. PUBLISH CUSTOMIZATIONS
+      # ============================================================
 
       - name: Publish Customizations
         shell: pwsh
@@ -1496,21 +1886,18 @@ jobs:
 
           if ($LASTEXITCODE -ne 0) {
 
-              Write-Error `
-                "Publishing customizations failed."
-
+              Write-Error "Publishing customizations failed."
               exit 1
           }
 
 
           Write-Host ""
-          Write-Host `
-            "Customizations published successfully."
+          Write-Host "Customizations published successfully."
 
 
-      # ========================================================
-      # 19. VERIFY PUBLISH
-      # ========================================================
+      # ============================================================
+      # 21. VERIFY PUBLISH
+      # ============================================================
 
       - name: Verify Publish
         shell: pwsh
@@ -1543,29 +1930,29 @@ jobs:
 
               if ($LASTEXITCODE -ne 0) {
 
-                  Write-Error `
-                    "Publish verification failed."
-
+                  Write-Error "Publish verification failed."
                   exit 1
               }
+
+
+              Write-Host ""
+              Write-Host "Publish verification completed."
 
           }
           else {
 
               Write-Host ""
-              Write-Host `
-                "verify-publish.ps1 not found."
-
-              Write-Host `
-                "Skipping custom verification."
+              Write-Host "verify-publish.ps1 not found."
+              Write-Host "Skipping custom verification."
           }
 
 
-      # ========================================================
-      # 20. FIX M2M / CHATBOT RELATIONSHIPS
-      # ========================================================
+      # ============================================================
+      # 22. FIX M2M / CHATBOT RELATIONSHIPS
+      # ============================================================
 
       - name: Fix M2M Links
+        if: env.HAS_M2M == 'true'
         shell: pwsh
 
         env:
@@ -1580,73 +1967,50 @@ jobs:
           Write-Host "======================================================"
 
 
+          Write-Host "M2M / chatbot components detected."
+          Write-Host "Running ATT relationship repair."
+
+
           $script =
             "./PowershellScripts/fix-m2m-links.ps1"
 
 
-          if (Test-Path $script) {
+          if (-not (Test-Path $script)) {
 
-              Write-Host "Running:"
-              Write-Host $script
+              Write-Error ""
+              Write-Error "M2M components detected but repair script was not found:"
+              Write-Error $script
 
-
-              & $script `
-                -Environment $env:TARGET_ENVIRONMENT
-
-
-              if ($LASTEXITCODE -ne 0) {
-
-                  Write-Error `
-                    "M2M relationship fix failed."
-
-                  exit 1
-              }
-
-          }
-          else {
-
-              Write-Host ""
-              Write-Host `
-                "fix-m2m-links.ps1 not found."
-
-              Write-Host `
-                "Skipping M2M relationship fix."
+              exit 1
           }
 
 
-      # ========================================================
-      # 21. VERIFY PAC FOR COPILOT
-      # ========================================================
-
-      - name: Verify PAC For Copilot Publishing
-        shell: pwsh
-        run: |
-
-          Write-Host ""
-          Write-Host "======================================================"
-          Write-Host "VERIFY PAC FOR COPILOT"
-          Write-Host "======================================================"
-
-
-          pac copilot --help
+          & $script `
+            -Environment $env:TARGET_ENVIRONMENT
 
 
           if ($LASTEXITCODE -ne 0) {
 
-              Write-Host ""
-              Write-Host `
-                "PAC Copilot command is unavailable."
-
-              Write-Host `
-                "Copilot publishing will be skipped."
+              Write-Error "M2M relationship fix failed."
+              exit 1
           }
 
 
-      # ========================================================
-      # 22. PUBLISH COPILOT BOTS
-      # ========================================================
+          Write-Host ""
+          Write-Host "M2M relationship repair completed successfully."
+
+
+      # ============================================================
+      # 23. PUBLISH COPILOT BOTS
+      #
+      # IMPORTANT:
+      # No "pac copilot --help" is executed.
+      #
+      # This step runs ONLY when Copilot/Bot components were detected.
+      # ============================================================
 
       - name: Publish Copilot Bots
+        if: env.HAS_COPILOT == 'true'
         shell: pwsh
 
         env:
@@ -1657,52 +2021,110 @@ jobs:
 
           Write-Host ""
           Write-Host "======================================================"
-          Write-Host "PUBLISH COPILOT BOTS"
+          Write-Host "COPILOT / AGENT DETECTED"
           Write-Host "======================================================"
+
+
+          Write-Host ""
+          Write-Host "Copilot/Agent components were detected."
+          Write-Host "Running Copilot publishing."
 
 
           $script =
             "./PowershellScripts/publish-bot.ps1"
 
 
-          if (Test-Path $script) {
+          if (-not (Test-Path $script)) {
 
-              Write-Host "Running:"
-              Write-Host $script
+              Write-Error ""
+              Write-Error "Copilot components detected but publish-bot.ps1 was not found:"
+              Write-Error $script
 
-
-              & $script `
-                -Environment $env:TARGET_ENVIRONMENT
-
-
-              if ($LASTEXITCODE -ne 0) {
-
-                  Write-Error `
-                    "Copilot bot publishing failed."
-
-                  exit 1
-              }
+              exit 1
+          }
 
 
-              Write-Host ""
-              Write-Host `
-                "Copilot publishing completed."
+          & $script `
+            -Environment $env:TARGET_ENVIRONMENT
+
+
+          if ($LASTEXITCODE -ne 0) {
+
+              Write-Error "Copilot bot publishing failed."
+              exit 1
+          }
+
+
+          Write-Host ""
+          Write-Host "Copilot publishing completed successfully."
+
+
+      # ============================================================
+      # 24. OPTIONAL COMPONENT SUMMARY
+      # ============================================================
+
+      - name: Optional Component Summary
+        if: success()
+        shell: pwsh
+        run: |
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "OPTIONAL COMPONENT DEPLOYMENT SUMMARY"
+          Write-Host "======================================================"
+
+
+          if ($env:HAS_CUSTOM_CONNECTORS -eq "true") {
+
+              Write-Host "Custom Connectors : PROCESSED"
 
           }
           else {
 
-              Write-Host ""
-              Write-Host `
-                "publish-bot.ps1 not found."
-
-              Write-Host `
-                "Skipping Copilot publishing."
+              Write-Host "Custom Connectors : SKIPPED"
           }
 
 
-      # ========================================================
-      # 23. DEPLOYMENT SUMMARY
-      # ========================================================
+          if ($env:HAS_CONNECTION_REFERENCES -eq "true") {
+
+              Write-Host "Connection Refs   : PROCESSED"
+
+          }
+          else {
+
+              Write-Host "Connection Refs   : SKIPPED"
+          }
+
+
+          if ($env:HAS_M2M -eq "true") {
+
+              Write-Host "M2M / Chatbot     : PROCESSED"
+
+          }
+          else {
+
+              Write-Host "M2M / Chatbot     : SKIPPED"
+          }
+
+
+          if ($env:HAS_COPILOT -eq "true") {
+
+              Write-Host "Copilot / Agent   : PROCESSED"
+
+          }
+          else {
+
+              Write-Host "Copilot / Agent   : SKIPPED"
+          }
+
+
+          Write-Host ""
+          Write-Host "======================================================"
+
+
+      # ============================================================
+      # 25. DEPLOYMENT SUMMARY
+      # ============================================================
 
       - name: Deployment Summary
         if: success()
@@ -1758,13 +2180,39 @@ jobs:
 
           Write-Host ""
           Write-Host "======================================================"
+          Write-Host "COMPONENT PROCESSING"
+          Write-Host "======================================================"
+
+
+          Write-Host ""
+          Write-Host "Connection References:"
+          Write-Host $env:HAS_CONNECTION_REFERENCES
+
+
+          Write-Host ""
+          Write-Host "Custom Connectors:"
+          Write-Host $env:HAS_CUSTOM_CONNECTORS
+
+
+          Write-Host ""
+          Write-Host "M2M / Chatbot:"
+          Write-Host $env:HAS_M2M
+
+
+          Write-Host ""
+          Write-Host "Copilot / Agent:"
+          Write-Host $env:HAS_COPILOT
+
+
+          Write-Host ""
+          Write-Host "======================================================"
           Write-Host "SOURCE → EXPORT → ARTIFACT → TARGET"
           Write-Host "======================================================"
 
 
-      # ========================================================
-      # 24. FAILURE DIAGNOSTICS
-      # ========================================================
+      # ============================================================
+      # 26. FAILURE DIAGNOSTICS
+      # ============================================================
 
       - name: Diagnose Deployment Failure
         if: failure()
@@ -1817,6 +2265,14 @@ jobs:
           Write-Host "$env:ARTIFACT_NAME"
 
 
+          Write-Host ""
+          Write-Host "Detected Components:"
+          Write-Host "Connection References: $env:HAS_CONNECTION_REFERENCES"
+          Write-Host "Custom Connectors: $env:HAS_CUSTOM_CONNECTORS"
+          Write-Host "M2M / Chatbot: $env:HAS_M2M"
+          Write-Host "Copilot / Agent: $env:HAS_COPILOT"
+
+
           $script =
             "./PowershellScripts/diagnose-failure.ps1"
 
@@ -1824,9 +2280,7 @@ jobs:
           if (Test-Path $script) {
 
               Write-Host ""
-              Write-Host `
-                "Running failure diagnostics:"
-
+              Write-Host "Running failure diagnostics:"
               Write-Host $script
 
 
@@ -1837,9 +2291,6 @@ jobs:
           else {
 
               Write-Host ""
-              Write-Host `
-                "diagnose-failure.ps1 not found."
-
-              Write-Host `
-                "No custom ATT diagnostics are available."
+              Write-Host "diagnose-failure.ps1 not found."
+              Write-Host "No custom ATT diagnostics are available."
           }
