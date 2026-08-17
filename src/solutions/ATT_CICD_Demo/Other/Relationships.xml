@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityRelationships xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <EntityRelationship Name="business_unit_crfdf_attdemorecords" />
+  <EntityRelationship Name="lk_crfdf_attdemorecords_createdby" />
+  <EntityRelationship Name="lk_crfdf_attdemorecords_modifiedby" />
+  <EntityRelationship Name="owner_crfdf_attdemorecords" />
+  <EntityRelationship Name="team_crfdf_attdemorecords" />
+  <EntityRelationship Name="user_crfdf_attdemorecords" />
+</EntityRelationships>

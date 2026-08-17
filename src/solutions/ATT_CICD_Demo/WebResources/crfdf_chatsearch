@@ -1,0 +1,6450 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Conversation Transcript Search</title>
+<style>
+
+    :root {
+
+      --bg: #f3f5f9;
+
+      --panel: #ffffff;
+
+      --panel-2: #fafcff;
+
+      --border: #d6deeb;
+
+      --muted: #5a6578;
+
+      --text: #10213f;
+
+      --primary: #0f6cbd;
+
+      --primary-hover: #0b5aa0;
+
+      --highlight: #fff2ad;
+
+      --success: #107c41;
+
+      --success-hover: #0c6b37;
+
+      --indigo: #4f46e5;
+
+      --indigo-hover: #4338ca;
+
+      --toolbar: #eef3fb;
+
+      --shadow: 0 1px 2px rgba(16, 33, 63, 0.06), 0 10px 24px rgba(16, 33, 63, 0.08);
+
+      --ring: 0 0 0 3px rgba(15, 108, 189, 0.2);
+
+    }
+
+    * {
+
+      box-sizing: border-box;
+
+    }
+
+    body {
+
+      font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+
+      background:
+
+        radial-gradient(1200px 380px at 100% -8%, #dfeeff 0%, transparent 70%),
+
+        radial-gradient(900px 320px at -10% -10%, #e9f3ff 0%, transparent 62%),
+
+        var(--bg);
+
+      color: var(--text);
+
+      padding: 26px;
+
+      margin: 0;
+
+      line-height: 1.35;
+
+    }
+ 
+    body::before {
+
+      content: "";
+
+      position: fixed;
+
+      top: 0;
+
+      left: 0;
+
+      right: 0;
+
+      height: 4px;
+
+      background: linear-gradient(90deg, #0f6cbd 0%, #2673d8 35%, #4aa0ff 100%);
+
+      z-index: 20;
+
+      pointer-events: none;
+
+    }
+
+    h3 {
+
+      margin: 4px 0 18px;
+
+      font-size: 1.45rem;
+
+      font-weight: 680;
+
+      letter-spacing: 0.01em;
+
+      color: #11305d;
+
+    }
+
+    input,
+
+    button {
+
+      padding: 9px 11px;
+
+      border-radius: 10px;
+
+      border: 1px solid var(--border);
+
+      font-size: 0.875rem;
+
+      min-height: 38px;
+
+      transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 120ms ease;
+
+    }
+
+    input {
+
+      background: #fff;
+
+      color: var(--text);
+
+    }
+ 
+    input:focus,
+
+    select:focus,
+
+    button:focus-visible {
+
+      outline: none;
+
+      box-shadow: var(--ring);
+
+      border-color: #8fc2f2;
+
+    }
+ 
+    #searchModeSelect {
+
+      padding: 8px 11px;
+
+      border-radius: 10px;
+
+      border: 1px solid var(--border);
+
+      font-size: 0.875rem;
+
+      min-height: 38px;
+
+      background: #fff;
+
+      color: var(--text);
+
+      cursor: pointer;
+
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+    }
+
+    button {
+
+      background: var(--primary);
+
+      color: #fff;
+
+      border: none;
+
+      cursor: pointer;
+
+      white-space: nowrap;
+
+      font-weight: 600;
+
+      letter-spacing: 0.01em;
+
+      box-shadow: 0 1px 2px rgba(15, 108, 189, 0.25);
+
+    }
+
+    button:hover {
+
+      background: var(--primary-hover);
+
+      transform: translateY(-1px);
+
+    }
+
+    button.is-active {
+
+      background: var(--success);
+
+      color: #fff;
+
+    }
+
+    button.is-active:hover {
+
+      background: var(--success-hover);
+
+    }
+
+    #filterToggleBtn.is-active {
+
+      background: #245ea7;
+
+    }
+ 
+    #filterToggleBtn:disabled {
+
+      background: #dde4ee;
+
+      color: #8a96ab;
+
+      cursor: not-allowed;
+
+      box-shadow: none;
+
+      transform: none;
+
+    }
+
+    #clearBtn {
+
+      background: #e9eef5;
+
+      color: #1c2f4f;
+
+      border: 1px solid #cfd9e8;
+
+      box-shadow: none;
+
+    }
+
+    #clearBtn:hover {
+
+      background: #dbe4f1;
+
+    }
+
+    #exportCsvBtn {
+
+      background: var(--success);
+
+      box-shadow: 0 1px 2px rgba(16, 124, 65, 0.28);
+
+    }
+
+    #exportCsvBtn:hover {
+
+      background: var(--success-hover);
+
+    }
+
+    #exportCsvBtn:disabled {
+
+      background: #9da7b5;
+
+      cursor: not-allowed;
+
+      box-shadow: none;
+
+      transform: none;
+
+    }
+ 
+    #exportSelectedBtn {
+
+      background: var(--indigo);
+
+      box-shadow: 0 1px 2px rgba(79, 70, 229, 0.28);
+
+    }
+ 
+    #exportSelectedBtn:hover {
+
+      background: var(--indigo-hover);
+
+    }
+ 
+    #exportSelectedBtn:disabled {
+
+      background: #9da7b5;
+
+      cursor: not-allowed;
+
+      box-shadow: none;
+
+      transform: none;
+
+    }
+
+    .search-toolbar {
+
+      display: flex;
+
+      gap: 8px;
+
+      align-items: center;
+
+      flex-wrap: wrap;
+
+      margin-bottom: 14px;
+
+      padding: 10px;
+
+      border: 1px solid var(--border);
+
+      border-radius: 14px;
+
+      background: var(--toolbar);
+
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+
+    }
+
+    #keywordInput {
+
+      flex: 1 1 320px;
+
+      max-width: 560px;
+
+      min-width: 240px;
+
+      background: #fff;
+
+    }
+
+    .filters {
+
+      display: none;
+
+      gap: 16px;
+
+      margin: 14px 0 16px;
+
+      flex-wrap: wrap;
+
+      align-items: stretch;
+
+      animation: filters-reveal 180ms ease;
+
+    }
+ 
+    @keyframes filters-reveal {
+
+      from { opacity: 0; transform: translateY(-4px); }
+
+      to { opacity: 1; transform: translateY(0); }
+
+    }
+
+    .filter-card {
+
+      background: var(--panel);
+
+      border: 1px solid var(--border);
+
+      border-radius: 14px;
+
+      box-shadow: var(--shadow);
+
+      padding: 14px;
+
+      min-width: 260px;
+
+    }
+
+    .filter-wrap {
+
+      flex: 1 1 280px;
+
+    }
+
+    .filter-title {
+
+      display: block;
+
+      margin-bottom: 8px;
+
+      font-size: 0.77rem;
+
+      font-weight: 700;
+
+      color: #2e4267;
+
+      letter-spacing: 0.05em;
+
+      text-transform: uppercase;
+
+    }
+
+    .filter-help {
+
+      margin: -2px 0 10px;
+
+      color: var(--muted);
+
+      font-size: 0.78rem;
+
+    }
+
+    .filter-wrap input[type="text"] {
+
+      width: 100%;
+
+      margin-bottom: 8px;
+
+    }
+
+    .filter-box {
+
+      background: var(--panel-2);
+
+      border: 1px solid var(--border);
+
+      border-radius: 10px;
+
+      padding: 8px;
+
+      min-width: 0;
+
+      width: 100%;
+
+      max-height: 240px;
+
+      overflow-y: auto;
+
+    }
+
+    .filter-item {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 8px;
+
+      padding: 5px 2px;
+
+      font-size: 0.85rem;
+
+      border-radius: 6px;
+
+    }
+ 
+    .filter-item:hover {
+
+      background: rgba(15, 108, 189, 0.06);
+
+    }
+
+    .filter-placeholder {
+
+      color: var(--muted);
+
+      font-size: 0.85rem;
+
+      font-style: italic;
+
+      padding: 6px 2px;
+
+    }
+
+    .date-filter-wrap {
+
+      flex: 1 1 340px;
+
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 10px;
+
+    }
+
+    .preset-buttons {
+
+      display: flex;
+
+      gap: 8px;
+
+      flex-wrap: wrap;
+
+      align-items: flex-start;
+
+    }
+
+    .date-inputs {
+
+      display: grid;
+
+      grid-template-columns: repeat(2, minmax(145px, 1fr));
+
+      gap: 10px;
+
+      align-items: end;
+
+    }
+
+    .date-field {
+
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 5px;
+
+    }
+
+    .date-field label {
+
+      font-size: 0.78rem;
+
+      font-weight: 600;
+
+      color: #4b5563;
+
+    }
+
+    .date-field input[type="date"] {
+
+      width: 100%;
+
+    }
+
+    .filter-actions {
+
+      flex: 0 0 100%;
+
+      width: 100%;
+
+      display: flex;
+
+      justify-content: center;
+
+      align-items: center;
+
+      padding-top: 14px;
+
+      margin-top: 2px;
+
+      border-top: 1px solid var(--border);
+
+    }
+
+    #results {
+
+      background: var(--panel);
+
+      border: 1px solid var(--border);
+
+      border-radius: 14px;
+
+      padding: 14px 16px;
+
+      box-shadow: var(--shadow);
+
+    }
+
+    .count {
+
+      font-weight: 600;
+
+      color: #415575;
+
+      margin: 8px 0 5px;
+
+      font-size: 0.95rem;
+
+    }
+ 
+    .search-status {
+
+      font-size: 0.82rem;
+
+      color: #5d6f8d;
+
+      min-height: 1.2em;
+
+      margin-bottom: 10px;
+
+    }
+ 
+    .pagination {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 8px;
+
+      padding: 10px 4px 4px;
+
+      font-size: 0.85rem;
+
+      color: var(--muted);
+
+      flex-wrap: wrap;
+
+      border-top: 1px dashed #d6deeb;
+
+      margin-top: 8px;
+
+    }
+ 
+    .pagination button {
+
+      padding: 3px 10px;
+
+      font-size: 0.82rem;
+
+      min-height: unset;
+
+    }
+ 
+    .page-size-wrap {
+
+      margin-left: auto;
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 6px;
+
+      font-size: 0.82rem;
+
+    }
+ 
+    .page-size-wrap select {
+
+      padding: 2px 6px;
+
+      font-size: 0.82rem;
+
+      border: 1px solid var(--border);
+
+      border-radius: 7px;
+
+      background: var(--panel);
+
+      color: var(--text);
+
+      cursor: pointer;
+
+    }
+
+    .result {
+
+      padding: 13px 6px;
+
+      border-bottom: 1px solid #e4eaf4;
+
+      display: flex;
+
+      align-items: flex-start;
+
+      gap: 10px;
+
+      border-radius: 10px;
+
+      transition: background-color 140ms ease;
+
+    }
+ 
+    .result:hover {
+
+      background: #f8fbff;
+
+    }
+ 
+    .result-body {
+
+      flex: 1;
+
+      min-width: 0;
+
+    }
+ 
+    .result-select {
+
+      margin-top: 3px;
+
+      width: 16px;
+
+      height: 16px;
+
+      min-height: unset;
+
+      padding: 0;
+
+      flex-shrink: 0;
+
+      cursor: pointer;
+
+      accent-color: #0f6cbd;
+
+    }
+ 
+    .results-toolbar {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 8px;
+
+      padding: 6px 4px 10px;
+
+      border-bottom: 1px solid #dce4f0;
+
+      margin-bottom: 6px;
+
+      font-size: 0.85rem;
+
+      color: var(--muted);
+
+    }
+ 
+    .results-toolbar label {
+
+      cursor: pointer;
+
+      user-select: none;
+
+    }
+ 
+    .results-toolbar input[type="checkbox"] {
+
+      width: 16px;
+
+      height: 16px;
+
+      min-height: unset;
+
+      padding: 0;
+
+      cursor: pointer;
+
+      accent-color: #0f6cbd;
+
+    }
+
+    .title {
+
+      color: #145ca8;
+
+      font-weight: 680;
+
+      cursor: pointer;
+
+      margin-bottom: 4px;
+
+      transition: color 120ms ease;
+
+    }
+ 
+    .title:hover {
+
+      color: #0b4e8f;
+
+      text-decoration: underline;
+
+      text-decoration-thickness: 1px;
+
+      text-underline-offset: 2px;
+
+    }
+
+    .snippet {
+
+      font-size: 0.81rem;
+
+      color: #2f3f59;
+
+      white-space: pre-line;
+
+    }
+ 
+    .snippet a {
+
+      pointer-events: none;
+
+      color: inherit;
+
+      text-decoration: none;
+
+      cursor: text;
+
+    }
+
+    .highlight {
+
+      background: var(--highlight);
+
+      padding: 1px 3px;
+
+      border-radius: 4px;
+
+      font-weight: 700;
+
+      color: #5d4a00;
+
+    }
+ 
+    .result-meta {
+
+      flex-shrink: 0;
+
+      min-width: 178px;
+
+      font-size: 0.76rem;
+
+      color: var(--muted);
+
+      line-height: 1.7;
+
+      padding-left: 12px;
+
+      border-left: 1px solid #dfe6f2;
+
+      background: #fbfdff;
+
+      border-radius: 8px;
+
+      padding-top: 6px;
+
+      padding-bottom: 6px;
+
+      padding-right: 8px;
+
+    }
+ 
+    .result-meta-label {
+
+      font-weight: 700;
+
+      color: #3f5270;
+
+    }
+ 
+    .date-rerun-note {
+
+      margin: 4px 0 0;
+
+      font-size: 0.75rem;
+
+      color: var(--muted);
+
+      font-style: italic;
+
+    }
+
+    /* Empty state messaging */
+
+    .empty-state {
+
+      text-align: center;
+
+      padding: 34px 16px;
+
+      color: var(--muted);
+
+      font-size: 0.9rem;
+
+      background: #fbfdff;
+
+      border: 1px dashed #d7e0ee;
+
+      border-radius: 12px;
+
+    }
+
+    .empty-state button {
+
+      margin-top: 12px;
+
+    }
+
+    @media (max-width: 900px) {
+
+      body {
+
+        padding: 16px;
+
+      }
+ 
+      h3 {
+
+        font-size: 1.28rem;
+
+      }
+ 
+      .search-toolbar {
+
+        border-radius: 12px;
+
+      }
+ 
+      #results {
+
+        padding: 12px;
+
+      }
+ 
+      .result-meta {
+
+        min-width: 154px;
+
+      }
+
+      .filter-card {
+
+        flex-basis: 100%;
+
+      }
+
+    }
+
+    @media (max-width: 560px) {
+
+      body {
+
+        padding: 12px;
+
+      }
+ 
+      h3 {
+
+        font-size: 1.14rem;
+
+      }
+ 
+      .search-toolbar {
+
+        padding: 8px;
+
+      }
+ 
+      .search-toolbar > input,
+
+      .search-toolbar > select,
+
+      .search-toolbar > button,
+
+      .date-inputs,
+
+      .date-inputs input[type="date"],
+
+      .preset-buttons > button,
+
+      #clearBtn {
+
+        width: 100%;
+
+      }
+ 
+      .result {
+
+        flex-direction: column;
+
+        gap: 8px;
+
+      }
+ 
+      .result-meta {
+
+        width: 100%;
+
+        min-width: 0;
+
+        border-left: none;
+
+        border-top: 1px solid #dfe6f2;
+
+        padding-left: 0;
+
+        padding-top: 8px;
+
+      }
+ 
+      .page-size-wrap {
+
+        margin-left: 0;
+
+        width: 100%;
+
+        justify-content: flex-start;
+
+      }
+
+      .date-inputs {
+
+        grid-template-columns: 1fr;
+
+      }
+
+    }
+
+    .scope-hint {
+
+      display: none;
+
+      font-size: 0.82rem;
+
+      border-radius: 10px;
+
+      padding: 9px 12px;
+
+      margin-bottom: 12px;
+
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+
+    }
+
+    .scope-hint.info {
+
+      display: block;
+
+      background: #eff6ff;
+
+      color: #194a9b;
+
+      border: 1px solid #c9ddfb;
+
+    }
+
+    .scope-hint.warn {
+
+      display: block;
+
+      background: #fff7e4;
+
+      color: #8a4c12;
+
+      border: 1px solid #f8d37f;
+
+    }
+</style>
+</head>
+<body>
+<h3>Conversation Transcript Search</h3>
+<div class="search-toolbar">
+<select id="searchModeSelect">
+<option value="keyword">Keyword</option>
+<option value="id">Conversation ID</option>
+</select>
+<input id="keywordInput" placeholder="Search transcript…" />
+<button id="searchBtn">Search</button>
+<button id="filterToggleBtn">Filters</button>
+<button id="exportCsvBtn" type="button" disabled>Export All</button>
+<button id="exportSelectedBtn" type="button" disabled>Export Selected</button>
+</div>
+<div class="filters" id="filters">
+<div class="filter-card filter-wrap">
+<label class="filter-title" for="queueTextFilter">Queues</label>
+<div class="filter-help">Choose one or more queues to narrow the results.</div>
+<input id="queueTextFilter" type="text" placeholder="Filter queues…" />
+<div class="filter-box" id="queueFilter"></div>
+</div>
+<div class="filter-card filter-wrap">
+<label class="filter-title" for="agentTextFilter">Agents</label>
+<div class="filter-help">Choose one or more agents to narrow the results.</div>
+<input id="agentTextFilter" type="text" placeholder="Filter agents…" />
+<div class="filter-box" id="agentFilter"><div class="filter-placeholder">Please complete search to see related agents.</div></div>
+</div>
+<div class="filter-card date-filter-wrap">
+<div>
+<span class="filter-title">Date range</span>
+<div class="filter-help">Use a preset or choose a custom start and end date.</div>
+</div>
+<div class="preset-buttons">
+<button type="button" class="preset-btn" onclick="applyDatePreset(0, this)">Today</button>
+<button type="button" class="preset-btn" onclick="applyDatePreset(7, this)">Last 7 Days</button>
+<button type="button" class="preset-btn" onclick="applyDatePreset(30, this)">Last 30 Days</button>
+</div>
+<div class="date-inputs">
+<div class="date-field">
+<label for="startDate">Start date</label>
+<input type="date" id="startDate" />
+</div>
+<div class="date-field">
+<label for="endDate">End date</label>
+<input type="date" id="endDate" />
+</div>
+</div>
+<p class="date-rerun-note">Changing the date requires a new Search to take effect.</p>
+</div>
+<div class="filter-actions">
+<button id="clearBtn" type="button">Clear all filters</button>
+</div>
+</div>
+<div id="scopeHint" class="scope-hint"></div>
+<div id="count" class="count"></div>
+<div id="searchStatus" class="search-status"></div>
+<div id="results">
+<div class="empty-state">
+<div><strong>No conversations found</strong></div>
+<div>Try refining your search or using filters to narrow results.</div>
+<button type="button" id="defaultShowFiltersBtn">Show Filters</button>
+</div>
+</div>
+<script>
+/* ============================================================
+   Conversation Transcript Search
+   Production-safe client-side implementation
+
+   Architecture:
+   - Incremental Dataverse paging
+   - Small transcript batches
+   - Stop after current UI page is filled
+   - Continue from nextLink for Next page
+   - Bounded in-memory page cache
+   - No fullTranscriptText retained during search
+   - Lazy transcript retrieval for export
+   - Per-record malformed transcript isolation
+   - Exponential retry with jitter
+   ============================================================ */
+
+var ELEVATED_ROLES = [
+    "Omnichannel Supervisor",
+    "Omnichannel Administrator"
+];
+
+var STORAGE_KEY = "kws_search_v2";
+
+var utf8Decoder = new TextDecoder();
+
+/*
+ * IMPORTANT PRODUCTION LIMITS
+ *
+ * SEARCH_BATCH_SIZE:
+ * Number of annotation transcript blobs retrieved per Dataverse request.
+ *
+ * 100 is intentionally much smaller than the previous 1000.
+ * The UI page can still be 25.
+ *
+ * PAGE_CACHE_LIMIT:
+ * Number of result pages retained in browser memory.
+ *
+ * MAX_TRANSCRIPT_CONCURRENCY:
+ * Maximum simultaneous transcript retrievals for export.
+ */
+var SEARCH_BATCH_SIZE = 100;
+var PAGE_CACHE_LIMIT = 20;
+var MAX_TRANSCRIPT_CONCURRENCY = 4;
+var MAX_RETRIES = 3;
+
+var state = {
+    /*
+     * Current page only / bounded page cache.
+     *
+     * We deliberately DO NOT maintain a 5,000+ element
+     * conversations array anymore.
+     */
+    currentPageItems: [],
+    filteredConversations: [],
+
+    /*
+     * Match metadata only.
+     *
+     * NEVER put fullTranscriptText here during search.
+     */
+    matchesByConversationId: {},
+
+    /*
+     * Page cache:
+     *
+     * page 1 -> 25 lightweight conversation objects
+     * page 2 -> 25 lightweight conversation objects
+     *
+     * Limited by PAGE_CACHE_LIMIT.
+     */
+    pageCache: {},
+
+    /*
+     * nextLink associated with the next search position.
+     *
+     * null = no more server records.
+     */
+    nextQuery: null,
+
+    /*
+     * Search position.
+     */
+    serverPageNumber: 0,
+
+    /*
+     * True once Dataverse has been exhausted.
+     */
+    searchExhausted: false,
+
+    /*
+     * Number of actual matching conversations discovered.
+     *
+     * This is exact only when searchExhausted = true.
+     */
+    totalMatches: 0,
+
+    /*
+     * Search lifecycle.
+     */
+    searchToken: null,
+    searching: false,
+
+    /*
+     * Filters/date.
+     */
+    date: null,
+    isSupervisor: false,
+
+    /*
+     * UI.
+     */
+    pageSize: 25,
+    currentPage: 1,
+
+    /*
+     * Legacy compatibility.
+     */
+    agentFilteredSearch: false,
+    restoredFromStorage: false,
+    searchMode: "keyword",
+
+    filterApplyTimer: null,
+
+    /*
+     * Search criteria snapshot.
+     */
+    keyword: "",
+
+    selectedQueueIds: [],
+    selectedAgentIds: []
+};
+
+/* Tracks opened Customer Service workspace tabs. */
+var openConversationTabs = {};
+
+
+/* ============================================================
+   Utility / DOM
+   ============================================================ */
+
+function getElement(id) {
+    return document.getElementById(id);
+}
+
+var searchModeSelect = getElement("searchModeSelect");
+var keywordInput = getElement("keywordInput");
+var searchBtn = getElement("searchBtn");
+var filterToggleBtn = getElement("filterToggleBtn");
+var exportCsvBtn = getElement("exportCsvBtn");
+var exportSelectedBtn = getElement("exportSelectedBtn");
+
+var filters = getElement("filters");
+var queueFilter = getElement("queueFilter");
+var agentFilter = getElement("agentFilter");
+
+var queueTextFilter = getElement("queueTextFilter");
+var agentTextFilter = getElement("agentTextFilter");
+
+var startDate = getElement("startDate");
+var endDate = getElement("endDate");
+
+var clearBtn = getElement("clearBtn");
+var scopeHint = getElement("scopeHint");
+var count = getElement("count");
+var searchStatus = getElement("searchStatus");
+var results = getElement("results");
+var defaultShowFiltersBtn = getElement("defaultShowFiltersBtn");
+
+
+function whenXrmReady(callback) {
+    if (
+        window.parent &&
+        parent.Xrm &&
+        parent.Xrm.WebApi
+    ) {
+        callback();
+        return;
+    }
+
+    setTimeout(function () {
+        whenXrmReady(callback);
+    }, 100);
+}
+
+
+function normalizeGuid(id) {
+    return String(id || "")
+        .replace(/[{}]/g, "")
+        .toLowerCase()
+        .trim();
+}
+
+
+function xmlEncode(value) {
+    return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+}
+
+
+function escapeHtml(value) {
+    return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+
+function localDateString(d) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) {
+        return "";
+    }
+
+    return d.getFullYear() + "-" +
+        String(d.getMonth() + 1).padStart(2, "0") + "-" +
+        String(d.getDate()).padStart(2, "0");
+}
+
+
+function formatCsvDate(value) {
+    if (!value) return "";
+
+    var d = new Date(value);
+
+    return isNaN(d.getTime())
+        ? value
+        : d.toISOString();
+}
+
+
+function getLookupId(row, logicalName) {
+    if (!row) return null;
+
+    return row["_" + logicalName + "_value"] ||
+        row[logicalName] ||
+        null;
+}
+
+
+/* ============================================================
+   Customer Service workspace navigation
+   ============================================================ */
+
+function openConversationTab(c) {
+
+    var id = normalizeGuid(
+        c.activityid ||
+        c.msdyn_ocliveworkitemid
+    );
+
+    if (!id) return;
+
+    var title =
+        "Chat Conversation: " +
+        (c.msdyn_ocliveworkitemid || c.activityid);
+
+    try {
+
+        if (
+            parent.Xrm &&
+            parent.Xrm.App &&
+            parent.Xrm.App.sessions
+        ) {
+
+            var session =
+                parent.Xrm.App.sessions.getFocusedSession();
+
+            if (session) {
+
+                var existingTabId =
+                    openConversationTabs[id];
+
+                if (existingTabId) {
+
+                    try {
+
+                        session.tabs
+                            .get(existingTabId)
+                            .focus();
+
+                        return;
+
+                    } catch (e) {
+
+                        delete openConversationTabs[id];
+                    }
+                }
+
+                session.tabs.createTab({
+                    title: title,
+                    pageInput: {
+                        pageType: "entityrecord",
+                        entityName: "msdyn_ocliveworkitem",
+                        entityId: id
+                    },
+                    canBeClosed: true
+
+                }).then(function (tabId) {
+
+                    openConversationTabs[id] = tabId;
+
+                    try {
+                        session.tabs.get(tabId).focus();
+                    } catch (e) {}
+
+                }, function () {
+
+                    parent.Xrm.Navigation.openForm({
+                        entityName: "msdyn_ocliveworkitem",
+                        entityId: id
+                    });
+
+                });
+
+                return;
+            }
+        }
+
+    } catch (e) {
+
+        console.warn(
+            "[KWS] Workspace tab navigation failed:",
+            e
+        );
+    }
+
+    parent.Xrm.Navigation.openForm({
+        entityName: "msdyn_ocliveworkitem",
+        entityId: id
+    });
+}
+
+
+/* ============================================================
+   Base64 / transcript parsing
+   ============================================================ */
+
+function decodeBase64(b64) {
+
+    if (!b64) return "";
+
+    try {
+
+        var binary = atob(b64);
+
+        var bytes =
+            new Uint8Array(binary.length);
+
+        for (
+            var i = 0;
+            i < binary.length;
+            i++
+        ) {
+            bytes[i] =
+                binary.charCodeAt(i);
+        }
+
+        return utf8Decoder.decode(bytes);
+
+    } catch (e) {
+
+        console.warn(
+            "[KWS] Base64 decode failed"
+        );
+
+        return "";
+    }
+}
+
+
+function normalizeTranscriptLine(value) {
+
+    var text = String(value || "")
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    text = text
+        .replace(/^Unknown:\s*/i, "")
+        .trim();
+
+    /*
+     * Drop extremely long opaque token-like values.
+     */
+    if (
+        /^[A-Za-z0-9+/_=-]{120,}$/.test(text)
+    ) {
+        return "";
+    }
+
+    return text;
+}
+
+
+function extractReadableFromJsonNode(
+    node,
+    collector
+) {
+
+    if (!node) return;
+
+    if (typeof node === "string") {
+
+        var cleaned =
+            normalizeTranscriptLine(node);
+
+        if (cleaned) {
+            collector.push(cleaned);
+        }
+
+        return;
+    }
+
+    if (Array.isArray(node)) {
+
+        node.forEach(function (item) {
+
+            extractReadableFromJsonNode(
+                item,
+                collector
+            );
+
+        });
+
+        return;
+    }
+
+    if (typeof node !== "object") {
+        return;
+    }
+
+    /*
+     * Ignore system event payloads.
+     */
+    if (
+        typeof node.EventName === "string"
+    ) {
+        return;
+    }
+
+    var preferredFields = [
+        "text",
+        "message",
+        "title",
+        "prompt",
+        "speak",
+        "displayName",
+        "label"
+    ];
+
+    preferredFields.forEach(function (key) {
+
+        if (typeof node[key] === "string") {
+
+            var cleaned =
+                normalizeTranscriptLine(
+                    node[key]
+                );
+
+            if (cleaned) {
+                collector.push(cleaned);
+            }
+        }
+    });
+
+    Object.keys(node).forEach(function (key) {
+
+        if (
+            /^(id|type|contentType|version|style|regex|maxLength|minLength|isRequired|errorMessage|fallbackText|associatedInputs|actionSubmitId|data|phone|otp)$/i
+                .test(key)
+        ) {
+            return;
+        }
+
+        extractReadableFromJsonNode(
+            node[key],
+            collector
+        );
+    });
+}
+
+
+function cleanTranscriptContent(rawContent) {
+
+    var raw =
+        String(rawContent || "")
+            .trim();
+
+    if (!raw) return "";
+
+    var trimmed =
+        raw.replace(
+            /^Unknown:\s*/i,
+            ""
+        ).trim();
+
+    var jsonCandidate = trimmed;
+
+    var firstBrace =
+        trimmed.indexOf("{");
+
+    if (firstBrace > 0) {
+
+        jsonCandidate =
+            trimmed.substring(firstBrace);
+    }
+
+    var collector = [];
+
+    try {
+
+        if (/^[\[{]/.test(jsonCandidate)) {
+
+            var parsed =
+                JSON.parse(jsonCandidate);
+
+            extractReadableFromJsonNode(
+                parsed,
+                collector
+            );
+        }
+
+    } catch (e) {
+
+        /*
+         * Not valid JSON.
+         * Fall back to plain text.
+         */
+    }
+
+    if (collector.length) {
+
+        var unique = [];
+        var seen = {};
+
+        collector.forEach(function (line) {
+
+            var key =
+                line.toLowerCase();
+
+            if (!seen[key]) {
+
+                seen[key] = true;
+
+                unique.push(line);
+            }
+        });
+
+        return unique.join(" | ");
+    }
+
+    return normalizeTranscriptLine(trimmed);
+}
+
+
+function stripSpeakerPrefix(text) {
+
+    return String(text || "")
+        .replace(
+            /^(customer|agent|bot|assistant|unknown)\s*:\s*/i,
+            ""
+        )
+        .replace(
+            /^digital\s+assistant[^:]{0,80}:\s*/i,
+            ""
+        )
+        .trim();
+}
+
+
+function guessTagFromContent(text) {
+
+    var value =
+        String(text || "")
+            .toLowerCase();
+
+    if (!value) return "";
+
+    if (
+        /^digital\s+assistant\b/.test(value) ||
+        /^bot\b/.test(value) ||
+        /^copilot\b/.test(value)
+    ) {
+        return "Bot";
+    }
+
+    if (
+        /^customer\s*:/.test(value) ||
+        /^visitor\s*:/.test(value)
+    ) {
+        return "Customer";
+    }
+
+    if (
+        /^agent\s*:/.test(value) ||
+        /^advisor\s*:/.test(value)
+    ) {
+        return "Agent";
+    }
+
+    return "";
+}
+
+
+function getSpeakerTag(message) {
+
+    var from =
+        (message && message.from) || {};
+
+    var user =
+        from.user || {};
+
+    var candidates = [
+        user.displayName,
+        user.name,
+        user.role,
+        user.userType,
+        user.type,
+
+        from.displayName,
+        from.name,
+        from.role,
+        from.userType,
+        from.type,
+        from.id,
+
+        message && message.channelType,
+        message && message.participantRole
+    ]
+        .filter(Boolean)
+        .map(function (v) {
+            return String(v).toLowerCase();
+        });
+
+    var combined =
+        candidates.join(" ");
+
+    var contentHint =
+        guessTagFromContent(
+            message && message.content
+        );
+
+    if (contentHint) {
+        return contentHint;
+    }
+
+    if (!combined) return "";
+
+    if (
+        /\b(bot|assistant|copilot|virtual\s*agent|digital\s*assistant|omnichannel\s*bot|#botsvc)\b/
+            .test(combined)
+    ) {
+        return "Bot";
+    }
+
+    if (
+        /\b(customer|visitor|client|consumer|end\s*user|anonymous)\b/
+            .test(combined)
+    ) {
+        return "Customer";
+    }
+
+    if (
+        /\b(agent|advisor|representative|csr|advocate|specialist|human|support|owner)\b/
+            .test(combined)
+    ) {
+        return "Agent";
+    }
+
+    if (
+        /^#/.test(combined) ||
+        /\bsvc\b/.test(combined)
+    ) {
+        return "Bot";
+    }
+
+    if (
+        /^[a-z.'-]+\s+[a-z.'-]+/.test(combined) ||
+        /@/.test(combined)
+    ) {
+        return "Agent";
+    }
+
+    return "";
+}
+
+
+function formatMessageWithTag(message) {
+
+    var content =
+        stripSpeakerPrefix(
+            String(
+                (message && message.content) || ""
+            )
+        );
+
+    if (!content) return "";
+
+    var tag =
+        getSpeakerTag(message);
+
+    return tag
+        ? tag + ": " + content
+        : content;
+}
+
+
+/*
+ * Parse transcript JSON.
+ *
+ * IMPORTANT:
+ * This function returns only parsed messages.
+ * It does NOT store them globally.
+ */
+function parseTranscriptMessages(rawText) {
+
+    try {
+
+        if (!rawText) {
+            return null;
+        }
+
+        var parsed =
+            JSON.parse(rawText);
+
+        if (
+            !Array.isArray(parsed) ||
+            parsed.length === 0
+        ) {
+            return null;
+        }
+
+        var wrapper = parsed[0];
+
+        var allMessages = [];
+
+        if (Array.isArray(wrapper.Content)) {
+
+            allMessages =
+                wrapper.Content;
+
+        } else if (
+            typeof wrapper.Content === "string"
+        ) {
+
+            try {
+
+                var inner =
+                    JSON.parse(
+                        wrapper.Content
+                    );
+
+                allMessages =
+                    Array.isArray(inner)
+                        ? inner
+                        : [];
+
+            } catch (e) {
+
+                allMessages = [];
+            }
+        }
+
+        var nonBridgedByTimestamp = {};
+
+        allMessages.forEach(function (m) {
+
+            if (
+                !m ||
+                m.isControlMessage ||
+                m.deliveryMode === "bridged" ||
+                !m.created
+            ) {
+                return;
+            }
+
+            var c =
+                String(m.content || "")
+                    .trim();
+
+            if (c.charAt(0) === "{") {
+
+                try {
+
+                    var evtCheck =
+                        JSON.parse(c);
+
+                    if (
+                        evtCheck &&
+                        typeof evtCheck.EventName === "string"
+                    ) {
+                        return;
+                    }
+
+                } catch (e) {}
+            }
+
+            nonBridgedByTimestamp[
+                m.created
+            ] = m;
+        });
+
+        return allMessages.filter(function (m) {
+
+            if (
+                !m ||
+                m.isControlMessage
+            ) {
+                return false;
+            }
+
+            var content =
+                String(m.content || "")
+                    .trim();
+
+            /*
+             * Remove system event messages.
+             */
+            if (content.charAt(0) === "{") {
+
+                try {
+
+                    var evt =
+                        JSON.parse(content);
+
+                    if (
+                        evt &&
+                        typeof evt.EventName === "string"
+                    ) {
+                        return false;
+                    }
+
+                } catch (e) {}
+            }
+
+            /*
+             * Handle bridged messages.
+             */
+            if (
+                m.deliveryMode === "bridged" &&
+                m.created
+            ) {
+
+                var original =
+                    nonBridgedByTimestamp[
+                        m.created
+                    ];
+
+                if (original) {
+
+                    if (
+                        String(
+                            original.content || ""
+                        ) ===
+                        String(
+                            m.content || ""
+                        )
+                    ) {
+
+                        return false;
+                    }
+
+                    m.content =
+                        "[translated] " +
+                        String(
+                            m.content || ""
+                        );
+                }
+            }
+
+            m.content =
+                cleanTranscriptContent(
+                    m.content
+                );
+
+            return !!m.content;
+
+        });
+
+    } catch (e) {
+
+        console.warn(
+            "[KWS] Transcript JSON parsing failed"
+        );
+
+        return null;
+    }
+}
+
+
+function getFormattedTranscriptFromMessages(
+    messages
+) {
+
+    if (!messages) return "";
+
+    return messages
+        .map(function (m) {
+
+            var ts = "";
+
+            if (m.created) {
+
+                var d =
+                    new Date(m.created);
+
+                if (!isNaN(d.getTime())) {
+
+                    ts =
+                        d.getFullYear() +
+                        "-" +
+                        String(
+                            d.getMonth() + 1
+                        ).padStart(2, "0") +
+                        "-" +
+                        String(
+                            d.getDate()
+                        ).padStart(2, "0") +
+                        " " +
+                        String(
+                            d.getHours()
+                        ).padStart(2, "0") +
+                        ":" +
+                        String(
+                            d.getMinutes()
+                        ).padStart(2, "0") +
+                        ":" +
+                        String(
+                            d.getSeconds()
+                        ).padStart(2, "0");
+                }
+            }
+
+            return (
+                ts
+                    ? "[" + ts + "] "
+                    : ""
+            ) +
+                formatMessageWithTag(m);
+
+        })
+        .join("\n");
+}
+
+
+/* ============================================================
+   Search result helpers
+   ============================================================ */
+
+function buildSnippet(
+    text,
+    keyword,
+    idx
+) {
+
+    var safeText =
+        String(text || "");
+
+    var raw =
+        safeText.substring(
+            Math.max(0, idx - 80),
+            idx + keyword.length + 120
+        );
+
+    var safe =
+        escapeHtml(raw);
+
+    var escapedKeyword =
+        escapeHtml(keyword)
+            .replace(
+                /[.*+?^${}()|[\]\\]/g,
+                "\\$&"
+            );
+
+    try {
+
+        return safe.replace(
+            new RegExp(
+                "(" +
+                escapedKeyword +
+                ")",
+                "ig"
+            ),
+            "<span class='highlight'>$1</span>"
+        );
+
+    } catch (e) {
+
+        return safe;
+    }
+}
+
+
+function addSearchMatch(
+    conversation,
+    snippetHtml,
+    transcriptId
+) {
+
+    var id =
+        normalizeGuid(
+            conversation.activityid ||
+            conversation.msdyn_ocliveworkitemid
+        );
+
+    if (!id) return false;
+
+    if (
+        state.matchesByConversationId[id]
+    ) {
+        return false;
+    }
+
+    state.matchesByConversationId[id] = {
+
+        conversationId: id,
+
+        transcriptId:
+            transcriptId
+                ? normalizeGuid(transcriptId)
+                : null,
+
+        snippetHtml:
+            snippetHtml || "",
+
+        /*
+         * NEVER store full transcript during search.
+         */
+        fullTranscriptText: "",
+
+        transcriptStatus: "not-loaded"
+    };
+
+    return true;
+}
+
+
+function cloneConversationMetadata(record) {
+
+    var activityId =
+        normalizeGuid(
+            record["wi.activityid"] ||
+            record.activityid
+        );
+
+    return {
+
+        activityid: activityId,
+
+        msdyn_ocliveworkitemid:
+            activityId,
+
+        subject:
+            record["wi.subject"] ||
+            record.subject ||
+            "",
+
+        createdon:
+            record["wi.createdon"] ||
+            record.createdon ||
+            null,
+
+        "a.systemuserid":
+            record["a.systemuserid"] ||
+            null,
+
+        "a.fullname":
+            record["a.fullname"] ||
+            "",
+
+        "q.queueid":
+            record["q.queueid"] ||
+            null,
+
+        "q.name":
+            record["q.name"] ||
+            "",
+
+        "tr.msdyn_transcriptid":
+            record["tr.msdyn_transcriptid"] ||
+            null
+    };
+}
+
+
+function getMatchForConversation(c) {
+
+    var id =
+        normalizeGuid(
+            c.activityid ||
+            c.msdyn_ocliveworkitemid
+        );
+
+    return (
+        state.matchesByConversationId[id] ||
+        null
+    );
+}
+
+
+/* ============================================================
+   Error handling / retry
+   ============================================================ */
+
+function getErrorText(err) {
+
+    if (!err) return "";
+
+    if (typeof err === "string") {
+        return err.toLowerCase();
+    }
+
+    var message = "";
+
+    try {
+
+        message =
+            String(err.message || "");
+
+    } catch (e) {}
+
+    var raw = "";
+
+    try {
+
+        raw =
+            err.raw
+                ? String(err.raw)
+                : "";
+
+    } catch (e) {}
+
+    var status = "";
+
+    try {
+
+        status =
+            String(
+                err.statusCode ||
+                err.status ||
+                ""
+            );
+
+    } catch (e) {}
+
+    return (
+        message +
+        " " +
+        raw +
+        " " +
+        status
+    ).toLowerCase();
+}
+
+
+function getErrorStatus(err) {
+
+    if (!err) return 0;
+
+    return Number(
+        err.statusCode ||
+        err.status ||
+        err.httpStatus ||
+        0
+    );
+}
+
+
+function isRetryableRetrieveError(err) {
+
+    var text =
+        getErrorText(err);
+
+    var status =
+        getErrorStatus(err);
+
+    /*
+     * Explicitly retry:
+     *
+     * 408
+     * 429
+     * 5xx
+     * network failure
+     * timeout
+     *
+     * Do NOT blindly retry:
+     * 400
+     * 403
+     * malformed JSON
+     */
+    if (
+        status === 408 ||
+        status === 429 ||
+        (status >= 500 && status <= 599)
+    ) {
+        return true;
+    }
+
+    return (
+        text.indexOf("failed to fetch") !== -1 ||
+        text.indexOf("network") !== -1 ||
+        text.indexOf("timeout") !== -1 ||
+        text.indexOf("temporar") !== -1 ||
+        text.indexOf("throttl") !== -1 ||
+        text.indexOf("429") !== -1
+    );
+}
+
+
+function sleep(ms) {
+
+    return new Promise(function(resolve) {
+
+        setTimeout(
+            resolve,
+            ms
+        );
+
+    });
+}
+
+
+function retryDelay(attempt) {
+
+    /*
+     * Exponential backoff:
+     *
+     * attempt 1 = ~250ms
+     * attempt 2 = ~500ms
+     * attempt 3 = ~1000ms
+     *
+     * Plus jitter.
+     */
+    var base =
+        Math.min(
+            4000,
+            250 *
+            Math.pow(
+                2,
+                attempt
+            )
+        );
+
+    var jitter =
+        Math.floor(
+            Math.random() * 200
+        );
+
+    return base + jitter;
+}
+
+
+function retrieveMultipleWithRetry(
+    entityName,
+    query,
+    maxRetries
+) {
+
+    maxRetries =
+        typeof maxRetries === "number"
+            ? maxRetries
+            : MAX_RETRIES;
+
+    function attempt(attemptNumber) {
+
+        return parent.Xrm.WebApi
+            .retrieveMultipleRecords(
+                entityName,
+                query
+            )
+            .catch(function(err) {
+
+                if (
+                    attemptNumber <
+                    maxRetries &&
+                    isRetryableRetrieveError(err)
+                ) {
+
+                    var delay =
+                        retryDelay(
+                            attemptNumber
+                        );
+
+                    console.warn(
+                        "[KWS] Dataverse retry",
+                        {
+                            entity: entityName,
+                            attempt:
+                                attemptNumber + 1,
+                            delay: delay,
+                            error:
+                                getErrorText(err)
+                        }
+                    );
+
+                    return sleep(delay)
+                        .then(function() {
+
+                            return attempt(
+                                attemptNumber + 1
+                            );
+
+                        });
+                }
+
+                throw err;
+            });
+    }
+
+    return attempt(0);
+}
+
+
+function getNextQueryFromNextLink(
+    nextLink
+) {
+
+    if (!nextLink) {
+        return "";
+    }
+
+    var idx =
+        nextLink.indexOf("?");
+
+    return idx >= 0
+        ? nextLink.substring(idx)
+        : nextLink;
+}
+
+
+/* ============================================================
+   Server-side filter construction
+   ============================================================ */
+
+function getSelectedQueueIds() {
+
+    return Array.from(
+        document.querySelectorAll(
+            ".queue-item input:checked"
+        )
+    )
+        .map(function(cb) {
+            return normalizeGuid(
+                cb.value
+            );
+        })
+        .filter(Boolean);
+}
+
+
+function getSelectedAgentIds() {
+
+    return Array.from(
+        document.querySelectorAll(
+            ".agent-item input:checked"
+        )
+    )
+        .map(function(cb) {
+            return normalizeGuid(
+                cb.value
+            );
+        })
+        .filter(Boolean);
+}
+
+
+function buildInCondition(
+    attribute,
+    values
+) {
+
+    var ids =
+        (values || [])
+            .map(normalizeGuid)
+            .filter(Boolean);
+
+    if (!ids.length) {
+        return "";
+    }
+
+    return (
+        "<condition attribute='" +
+        attribute +
+        "' operator='in'>" +
+
+        ids.map(function(id) {
+            return (
+                "<value>" +
+                xmlEncode(id) +
+                "</value>"
+            );
+        }).join("") +
+
+        "</condition>"
+    );
+}
+
+
+/* ============================================================
+   Search FetchXML
+   ============================================================ */
+
+function buildSearchFetchXml() {
+
+    var userId =
+        normalizeGuid(
+            parent.Xrm.Utility
+                .getGlobalContext()
+                .userSettings
+                .userId
+        );
+
+    var selectedQueueIds =
+        getSelectedQueueIds();
+
+    var selectedAgentIds =
+        getSelectedAgentIds();
+
+    state.selectedQueueIds =
+        selectedQueueIds;
+
+    state.selectedAgentIds =
+        selectedAgentIds;
+
+    /*
+     * Date is applied server-side.
+     */
+    var dateFilter = "";
+
+    if (state.date) {
+
+        dateFilter =
+            "<condition attribute='createdon' operator='ge' value='" +
+            xmlEncode(
+                state.date.start.toISOString()
+            ) +
+            "' />" +
+
+            "<condition attribute='createdon' operator='le' value='" +
+            xmlEncode(
+                state.date.end.toISOString()
+            ) +
+            "' />";
+    }
+
+    /*
+     * Queue filtering is pushed into queue link.
+     */
+    var queueFilter =
+        buildInCondition(
+            "queueid",
+            selectedQueueIds
+        );
+
+    var queueMembershipScope =
+        !state.isSupervisor
+            ? (
+                "<link-entity name='queuemembership' " +
+                "from='queueid' " +
+                "to='queueid' " +
+                "link-type='inner'>" +
+
+                "<filter>" +
+
+                "<condition attribute='systemuserid' " +
+                "operator='eq' value='" +
+                xmlEncode(userId) +
+                "' />" +
+
+                "</filter>" +
+
+                "</link-entity>"
+            )
+            : "";
+
+    /*
+     * Agent filtering is now server-side.
+     */
+    var agentFilter =
+        selectedAgentIds.length
+            ? (
+                "<filter>" +
+                buildInCondition(
+                    "systemuserid",
+                    selectedAgentIds
+                ) +
+                "</filter>"
+            )
+            : "";
+
+    var wiConditions =
+        dateFilter;
+
+    var wiFilterBlock =
+        wiConditions
+            ? "<filter>" +
+                wiConditions +
+              "</filter>"
+            : "";
+
+    /*
+     * IMPORTANT:
+     *
+     * documentbody is still required here because the
+     * current architecture stores the searchable transcript
+     * only inside documentbody.
+     *
+     * We reduce the batch size and stop early instead of
+     * loading the entire corpus.
+     */
+    return (
+
+        "<fetch>" +
+
+        "<entity name='annotation'>" +
+
+        "<attribute name='annotationid' />" +
+
+        "<attribute name='documentbody' />" +
+
+        "<order attribute='createdon' " +
+        "entityname='wi' descending='true' />" +
+
+        "<filter>" +
+
+        "<condition attribute='documentbody' " +
+        "operator='not-null' />" +
+
+        "</filter>" +
+
+        "<link-entity name='msdyn_transcript' " +
+        "from='msdyn_transcriptid' " +
+        "to='objectid' " +
+        "link-type='inner' " +
+        "alias='tr'>" +
+
+        "<attribute name='msdyn_transcriptid' />" +
+
+        "<link-entity name='msdyn_ocliveworkitem' " +
+        "from='activityid' " +
+        "to='msdyn_liveworkitemidid' " +
+        "link-type='inner' " +
+        "alias='wi'>" +
+
+        "<attribute name='activityid' />" +
+        "<attribute name='subject' />" +
+        "<attribute name='createdon' />" +
+
+        wiFilterBlock +
+
+        "<link-entity name='systemuser' " +
+        "from='systemuserid' " +
+        "to='msdyn_activeagentid' " +
+        "alias='a' " +
+        "link-type='outer'>" +
+
+        "<attribute name='systemuserid' />" +
+        "<attribute name='fullname' />" +
+
+        agentFilter +
+
+        "</link-entity>" +
+
+        "<link-entity name='queue' " +
+        "from='queueid' " +
+        "to='msdyn_cdsqueueid' " +
+        "alias='q' " +
+        "link-type='inner'>" +
+
+        "<attribute name='queueid' />" +
+        "<attribute name='name' />" +
+
+        queueFilter +
+
+        queueMembershipScope +
+
+        "</link-entity>" +
+
+        "</link-entity>" +
+
+        "</link-entity>" +
+
+        "</entity>" +
+
+        "</fetch>"
+    );
+}
+
+
+/* ============================================================
+   Transcript search of ONE record
+   ============================================================ */
+
+function inspectTranscriptRecord(
+    record,
+    keyword
+) {
+
+    var activityId =
+        normalizeGuid(
+            record["wi.activityid"]
+        );
+
+    if (!activityId) {
+        return {
+            matched: false,
+            reason: "missing-conversation-id"
+        };
+    }
+
+    var transcriptId =
+        normalizeGuid(
+            record["tr.msdyn_transcriptid"]
+        );
+
+    var rawText =
+        decodeBase64(
+            record.documentbody
+        );
+
+    /*
+     * Base64 decode failure.
+     *
+     * Do not throw.
+     * Do not terminate the search.
+     */
+    if (!rawText) {
+
+        return {
+            matched: false,
+            reason: "invalid-or-empty-documentbody"
+        };
+    }
+
+    /*
+     * Cheap raw-text pre-check.
+     *
+     * This is only an optimization.
+     * We still parse when the raw text appears to contain
+     * the keyword because the final searchable text may
+     * differ after normalization.
+     */
+    if (
+        keyword &&
+        rawText
+            .toLowerCase()
+            .indexOf(keyword) === -1
+    ) {
+
+        return {
+            matched: false,
+            reason: "keyword-not-in-raw-payload"
+        };
+    }
+
+    var messages =
+        parseTranscriptMessages(
+            rawText
+        );
+
+    if (!messages) {
+
+        /*
+         * Malformed transcript.
+         * Quarantine this record logically and continue.
+         */
+        return {
+            matched: false,
+            reason: "malformed-transcript"
+        };
+    }
+
+    var searchText =
+        messages
+            .map(function(m) {
+                return String(
+                    m.content || ""
+                );
+            })
+            .filter(Boolean)
+            .join("\n");
+
+    if (!keyword) {
+
+        return {
+            matched: true,
+            activityId: activityId,
+            transcriptId: transcriptId,
+            messages: messages,
+            searchText: searchText
+        };
+    }
+
+    var lower =
+        searchText.toLowerCase();
+
+    var idx =
+        lower.indexOf(keyword);
+
+    if (idx === -1) {
+
+        return {
+            matched: false,
+            reason: "keyword-not-found-after-parse"
+        };
+    }
+
+    return {
+        matched: true,
+        activityId: activityId,
+        transcriptId: transcriptId,
+        messages: messages,
+        searchText: searchText,
+        snippetHtml:
+            buildSnippet(
+                searchText,
+                keyword,
+                idx
+            )
+    };
+}
+
+
+/* ============================================================
+   Incremental search engine
+   ============================================================ */
+
+/*
+ * Search until:
+ *
+ * 1. requested number of matches are found, OR
+ * 2. Dataverse is exhausted.
+ *
+ * This is the critical production change.
+ */
+function fillCurrentPage(
+    token,
+    targetPage
+) {
+
+    if (
+        state.searchToken !== token
+    ) {
+        return Promise.resolve(false);
+    }
+
+    var targetCount =
+        state.pageSize;
+
+    var pageItems = [];
+
+    /*
+     * Continue from existing nextQuery.
+     */
+    function scanNextDataversePage() {
+
+        if (
+            state.searchToken !== token
+        ) {
+            return Promise.resolve(false);
+        }
+
+        if (
+            pageItems.length >=
+            targetCount
+        ) {
+            return Promise.resolve(true);
+        }
+
+        if (
+            state.searchExhausted
+        ) {
+            return Promise.resolve(false);
+        }
+
+        var query;
+
+        if (state.nextQuery) {
+
+            query =
+                state.nextQuery;
+
+        } else {
+
+            var fetchXml =
+                buildSearchFetchXml();
+
+            /*
+             * Add page/count only on the initial query.
+             */
+            fetchXml =
+                fetchXml.replace(
+                    /^<fetch/,
+                    "<fetch page=\"1\" count=\"" +
+                    SEARCH_BATCH_SIZE +
+                    "\" "
+                );
+
+            query =
+                "?fetchXml=" +
+                encodeURIComponent(
+                    fetchXml
+                );
+        }
+
+        state.serverPageNumber++;
+
+        searchStatus.textContent =
+            "Searching transcripts… " +
+            "server batch " +
+            state.serverPageNumber +
+            " • " +
+            state.totalMatches +
+            " match" +
+            (
+                state.totalMatches === 1
+                    ? ""
+                    : "es"
+            ) +
+            " found";
+
+        return retrieveMultipleWithRetry(
+            "annotation",
+            query,
+            MAX_RETRIES
+        )
+        .then(function(res) {
+
+            if (
+                state.searchToken !== token
+            ) {
+                return false;
+            }
+
+            var entities =
+                res.entities || [];
+
+            /*
+             * Dataverse has no more records.
+             */
+            if (!entities.length) {
+
+                state.searchExhausted =
+                    true;
+
+                state.nextQuery =
+                    null;
+
+                return false;
+            }
+
+            /*
+             * Process records one at a time.
+             *
+             * We deliberately avoid Promise.all here because
+             * every annotation already contains a large blob.
+             *
+             * This keeps memory pressure predictable.
+             */
+            var index = 0;
+
+            function processNextRecord() {
+
+                if (
+                    state.searchToken !== token
+                ) {
+                    return Promise.resolve(false);
+                }
+
+                if (
+                    pageItems.length >=
+                    targetCount
+                ) {
+                    return Promise.resolve(true);
+                }
+
+                if (
+                    index >=
+                    entities.length
+                ) {
+
+                    /*
+                     * Continue from Dataverse nextLink.
+                     */
+                    var next =
+                        getNextQueryFromNextLink(
+                            res.nextLink || ""
+                        );
+
+                    state.nextQuery =
+                        next || null;
+
+                    if (!next) {
+
+                        state.searchExhausted =
+                            true;
+
+                        return Promise.resolve(false);
+                    }
+
+                    return scanNextDataversePage();
+                }
+
+                var record =
+                    entities[index++];
+
+                /*
+                 * Yield to browser occasionally.
+                 */
+                if (
+                    index % 10 === 0
+                ) {
+
+                    return new Promise(
+                        function(resolve) {
+
+                            setTimeout(
+                                function() {
+
+                                    resolve(
+                                        processRecord()
+                                    );
+
+                                },
+                                0
+                            );
+
+                        }
+                    );
+
+                }
+
+                return processRecord();
+
+
+                function processRecord() {
+
+                    var inspected;
+
+                    try {
+
+                        inspected =
+                            inspectTranscriptRecord(
+                                record,
+                                state.keyword
+                            );
+
+                    } catch (e) {
+
+                        console.error(
+                            "[KWS] Transcript record failed:",
+                            e
+                        );
+
+                        inspected = {
+                            matched: false,
+                            reason: "processing-error"
+                        };
+                    }
+
+                    /*
+                     * Malformed record does NOT terminate search.
+                     */
+                    if (
+                        !inspected ||
+                        !inspected.matched
+                    ) {
+
+                        return processNextRecord();
+                    }
+
+                    var conversation =
+                        cloneConversationMetadata(
+                            record
+                        );
+
+                    var added =
+                        addSearchMatch(
+                            conversation,
+                            inspected.snippetHtml ||
+                                escapeHtml(
+                                    (
+                                        inspected.searchText ||
+                                        ""
+                                    ).substring(
+                                        0,
+                                        220
+                                    )
+                                ),
+                            inspected.transcriptId
+                        );
+
+                    if (!added) {
+
+                        return processNextRecord();
+                    }
+
+                    state.totalMatches++;
+
+                    pageItems.push(
+                        conversation
+                    );
+
+                    /*
+                     * IMPORTANT:
+                     *
+                     * The parsed transcript is deliberately
+                     * released here.
+                     *
+                     * We do not store it in state.
+                     */
+                    inspected.messages = null;
+                    inspected.searchText = null;
+
+                    return processNextRecord();
+                }
+            }
+
+            return processNextRecord();
+        });
+    }
+
+    return scanNextDataversePage()
+        .then(function() {
+
+            if (
+                state.searchToken !== token
+            ) {
+                return false;
+            }
+
+            state.currentPageItems =
+                pageItems;
+
+            state.filteredConversations =
+                pageItems.slice();
+
+            state.pageCache[targetPage] =
+                pageItems.slice();
+
+            trimPageCache();
+
+            return pageItems.length > 0;
+        });
+}
+
+
+function trimPageCache() {
+
+    var pages =
+        Object.keys(
+            state.pageCache
+        )
+            .map(Number)
+            .sort(function(a, b) {
+                return a - b;
+            });
+
+    while (
+        pages.length >
+        PAGE_CACHE_LIMIT
+    ) {
+
+        var oldest =
+            pages.shift();
+
+        delete state.pageCache[
+            oldest
+        ];
+    }
+}
+
+
+/* ============================================================
+   Page navigation
+   ============================================================ */
+
+function loadPage(
+    page
+) {
+
+    if (page < 1) {
+        page = 1;
+    }
+
+    var token =
+        state.searchToken;
+
+    if (!token) {
+        return Promise.resolve();
+    }
+
+    /*
+     * Already cached.
+     */
+    if (
+        state.pageCache[page]
+    ) {
+
+        state.currentPage =
+            page;
+
+        state.currentPageItems =
+            state.pageCache[page].slice();
+
+        state.filteredConversations =
+            state.currentPageItems.slice();
+
+        renderCurrentPage();
+
+        return Promise.resolve();
+    }
+
+    /*
+     * Only allow the immediate next page.
+     *
+     * This prevents random page jumps from forcing
+     * expensive searches.
+     */
+    if (
+        page >
+        state.currentPage + 1
+    ) {
+
+        searchStatus.textContent =
+            "Please use Next to load the next result page.";
+
+        return Promise.resolve();
+    }
+
+    state.searching = true;
+
+    renderCurrentPage();
+
+    return fillCurrentPage(
+        token,
+        page
+    )
+        .then(function(hasResults) {
+
+            if (
+                state.searchToken !== token
+            ) {
+                return;
+            }
+
+            if (hasResults) {
+
+                state.currentPage =
+                    page;
+
+                state.currentPageItems =
+                    state.pageCache[page]
+                        ? state.pageCache[page].slice()
+                        : [];
+
+                state.filteredConversations =
+                    state.currentPageItems.slice();
+
+                renderCurrentPage();
+
+                updateSearchStatus();
+
+            } else {
+
+                renderCurrentPage();
+
+                updateSearchStatus();
+            }
+
+        })
+        .catch(function(err) {
+
+            if (
+                state.searchToken !== token
+            ) {
+                return;
+            }
+
+            console.error(
+                "[KWS] Page load failed:",
+                err
+            );
+
+            searchStatus.textContent =
+                "Unable to load this result page. Please try Next again.";
+
+        })
+        .finally(function() {
+
+            if (
+                state.searchToken === token
+            ) {
+
+                state.searching =
+                    false;
+
+                renderCurrentPage();
+            }
+        });
+}
+
+
+function updateSearchStatus() {
+
+    if (state.searchExhausted) {
+
+        searchStatus.textContent =
+            "Search completed. " +
+            state.totalMatches +
+            " conversation" +
+            (
+                state.totalMatches === 1
+                    ? ""
+                    : "s"
+            ) +
+            " found.";
+
+        return;
+    }
+
+    searchStatus.textContent =
+        state.totalMatches +
+        "+ matching conversation" +
+        (
+            state.totalMatches === 1
+                ? ""
+                : "s"
+        ) +
+        " found so far. More results are available.";
+}
+
+
+/* ============================================================
+   Main keyword search
+   ============================================================ */
+
+function executeKeywordSearch() {
+
+    var rawInput =
+        keywordInput.value.trim();
+
+    if (!rawInput) {
+
+        searchStatus.textContent =
+            "Enter a keyword to search.";
+
+        return Promise.resolve();
+    }
+
+    var token = {};
+
+    state.searchToken =
+        token;
+
+    state.searching =
+        true;
+
+    state.searchMode =
+        "keyword";
+
+    state.keyword =
+        rawInput.toLowerCase();
+
+    state.currentPage =
+        1;
+
+    state.currentPageItems =
+        [];
+
+    state.filteredConversations =
+        [];
+
+    state.matchesByConversationId =
+        {};
+
+    state.pageCache =
+        {};
+
+    state.nextQuery =
+        null;
+
+    state.serverPageNumber =
+        0;
+
+    state.searchExhausted =
+        false;
+
+    state.totalMatches =
+        0;
+
+    state.agentFilteredSearch =
+        false;
+
+    exportCsvBtn.disabled =
+        true;
+
+    exportCsvBtn.textContent =
+        "Export All";
+
+    exportSelectedBtn.disabled =
+        true;
+
+    exportSelectedBtn.textContent =
+        "Export Selected";
+
+    results.innerHTML = "";
+
+    count.textContent = "";
+
+    searchStatus.textContent =
+        "Starting production-safe search…";
+
+    searchBtn.disabled =
+        true;
+
+    searchBtn.textContent =
+        "Searching…";
+
+    if (!state.date) {
+        applyDefaultDateScope();
+    }
+
+    return loadPage(1)
+        .then(function() {
+
+            if (
+                state.searchToken !== token
+            ) {
+                return;
+            }
+
+            updateSearchStatus();
+
+        })
+        .catch(function(err) {
+
+            console.error(
+                "[KWS] Search failed:",
+                err
+            );
+
+            searchStatus.textContent =
+                "Search failed. Check the browser console for details.";
+
+            results.innerHTML =
+                "<div class='empty-state'>" +
+                "<strong>Search failed</strong>" +
+                "<div>Retry the search. If the problem continues, check the browser console and Network trace.</div>" +
+                "</div>";
+
+        })
+        .finally(function() {
+
+            if (
+                state.searchToken === token
+            ) {
+
+                state.searching =
+                    false;
+
+                searchBtn.disabled =
+                    false;
+
+                searchBtn.textContent =
+                    "Search";
+
+                renderCurrentPage();
+            }
+        });
+}
+
+
+/* ============================================================
+   Conversation ID search
+   ============================================================ */
+
+function searchByConversationId(
+    id,
+    token
+) {
+
+    var userId =
+        normalizeGuid(
+            parent.Xrm.Utility
+                .getGlobalContext()
+                .userSettings
+                .userId
+        );
+
+    var queueMembershipScope =
+        !state.isSupervisor
+            ? (
+                "<link-entity name='queuemembership' " +
+                "from='queueid' " +
+                "to='queueid' " +
+                "link-type='inner'>" +
+
+                "<filter>" +
+
+                "<condition attribute='systemuserid' " +
+                "operator='eq' value='" +
+                xmlEncode(userId) +
+                "' />" +
+
+                "</filter>" +
+
+                "</link-entity>"
+            )
+            : "";
+
+    /*
+     * ID search can retrieve documentbody because
+     * only one conversation is involved.
+     */
+    var fetchXml =
+
+        "<fetch top='1'>" +
+
+        "<entity name='annotation'>" +
+
+        "<attribute name='annotationid' />" +
+        "<attribute name='documentbody' />" +
+
+        "<filter>" +
+
+        "<condition attribute='documentbody' " +
+        "operator='not-null' />" +
+
+        "</filter>" +
+
+        "<link-entity name='msdyn_transcript' " +
+        "from='msdyn_transcriptid' " +
+        "to='objectid' " +
+        "link-type='inner' " +
+        "alias='tr'>" +
+
+        "<attribute name='msdyn_transcriptid' />" +
+
+        "<link-entity name='msdyn_ocliveworkitem' " +
+        "from='activityid' " +
+        "to='msdyn_liveworkitemidid' " +
+        "link-type='inner' " +
+        "alias='wi'>" +
+
+        "<attribute name='activityid' />" +
+        "<attribute name='subject' />" +
+        "<attribute name='createdon' />" +
+
+        "<filter>" +
+
+        "<condition attribute='activityid' " +
+        "operator='eq' value='" +
+        xmlEncode(id) +
+        "' />" +
+
+        "</filter>" +
+
+        "<link-entity name='systemuser' " +
+        "from='systemuserid' " +
+        "to='msdyn_activeagentid' " +
+        "alias='a' " +
+        "link-type='outer'>" +
+
+        "<attribute name='systemuserid' />" +
+        "<attribute name='fullname' />" +
+
+        "</link-entity>" +
+
+        "<link-entity name='queue' " +
+        "from='queueid' " +
+        "to='msdyn_cdsqueueid' " +
+        "alias='q' " +
+        "link-type='inner'>" +
+
+        "<attribute name='queueid' />" +
+        "<attribute name='name' />" +
+
+        queueMembershipScope +
+
+        "</link-entity>" +
+
+        "</link-entity>" +
+
+        "</link-entity>" +
+
+        "</entity>" +
+
+        "</fetch>";
+
+    return retrieveMultipleWithRetry(
+        "annotation",
+        "?fetchXml=" +
+        encodeURIComponent(fetchXml),
+        MAX_RETRIES
+    )
+        .then(function(res) {
+
+            if (
+                state.searchToken !== token
+            ) {
+                return;
+            }
+
+            var record =
+                (res.entities || [])[0];
+
+            if (!record) {
+
+                /*
+                 * No transcript.
+                 *
+                 * Still try direct conversation lookup.
+                 */
+                return lookupConversationWithoutTranscript(
+                    id,
+                    token
+                );
+            }
+
+            var conversation =
+                cloneConversationMetadata(
+                    record
+                );
+
+            var rawText =
+                decodeBase64(
+                    record.documentbody
+                );
+
+            var messages =
+                parseTranscriptMessages(
+                    rawText
+                );
+
+            var transcriptId =
+                normalizeGuid(
+                    record[
+                        "tr.msdyn_transcriptid"
+                    ]
+                );
+
+            if (!messages) {
+
+                addSearchMatch(
+                    conversation,
+                    "<em>Transcript exists but could not be parsed.</em>",
+                    transcriptId
+                );
+
+            } else {
+
+                var searchText =
+                    messages
+                        .map(function(m) {
+                            return String(
+                                m.content || ""
+                            );
+                        })
+                        .filter(Boolean)
+                        .join("\n");
+
+                var snippet =
+                    searchText.substring(
+                        0,
+                        220
+                    );
+
+                addSearchMatch(
+                    conversation,
+                    escapeHtml(snippet),
+                    transcriptId
+                );
+            }
+
+            state.totalMatches = 1;
+
+            state.pageCache[1] =
+                [conversation];
+
+            state.currentPageItems =
+                [conversation];
+
+            state.filteredConversations =
+                [conversation];
+
+            state.searchExhausted =
+                true;
+
+            state.currentPage = 1;
+
+            renderCurrentPage();
+
+        });
+}
+
+
+function lookupConversationWithoutTranscript(
+    id,
+    token
+) {
+
+    var fetchXml =
+
+        "<fetch top='1'>" +
+
+        "<entity name='msdyn_ocliveworkitem'>" +
+
+        "<attribute name='activityid' />" +
+        "<attribute name='subject' />" +
+        "<attribute name='createdon' />" +
+        "<attribute name='statecode' />" +
+
+        "<filter>" +
+
+        "<condition attribute='activityid' " +
+        "operator='eq' value='" +
+        xmlEncode(id) +
+        "' />" +
+
+        "</filter>" +
+
+        "</entity>" +
+
+        "</fetch>";
+
+    return retrieveMultipleWithRetry(
+        "msdyn_ocliveworkitem",
+        "?fetchXml=" +
+        encodeURIComponent(fetchXml),
+        MAX_RETRIES
+    )
+        .then(function(res) {
+
+            if (
+                state.searchToken !== token
+            ) {
+                return;
+            }
+
+            var wi =
+                (res.entities || [])[0];
+
+            if (!wi) {
+                return;
+            }
+
+            var activityId =
+                normalizeGuid(
+                    wi.activityid
+                );
+
+            var conversation = {
+
+                activityid:
+                    activityId,
+
+                msdyn_ocliveworkitemid:
+                    activityId,
+
+                subject:
+                    wi.subject || "",
+
+                createdon:
+                    wi.createdon || null,
+
+                "a.systemuserid":
+                    null,
+
+                "a.fullname":
+                    "",
+
+                "q.queueid":
+                    null,
+
+                "q.name":
+                    ""
+            };
+
+            var isOpen =
+                Number(wi.statecode) === 0;
+
+            var notice =
+                isOpen
+                    ? "<em>No transcript yet — conversation is still active.</em>"
+                    : "<em>No transcript found for this conversation.</em>";
+
+            addSearchMatch(
+                conversation,
+                notice,
+                null
+            );
+
+            state.totalMatches = 1;
+
+            state.pageCache[1] =
+                [conversation];
+
+            state.currentPageItems =
+                [conversation];
+
+            state.filteredConversations =
+                [conversation];
+
+            state.searchExhausted =
+                true;
+
+            renderCurrentPage();
+        });
+}
+
+
+/* ============================================================
+   Filters / dates
+   ============================================================ */
+
+function applyDefaultDateScope() {
+
+    if (
+        startDate.value &&
+        endDate.value
+    ) {
+        state.date = {
+            start:
+                new Date(
+                    startDate.value +
+                    "T00:00:00"
+                ),
+            end:
+                new Date(
+                    endDate.value +
+                    "T23:59:59"
+                )
+        };
+
+        return;
+    }
+
+    var btn7 =
+        Array.from(
+            document.querySelectorAll(
+                ".preset-btn"
+            )
+        )
+        .find(function(btn) {
+
+            return (
+                btn.textContent.trim() ===
+                "Last 7 Days"
+            );
+        });
+
+    applyDatePreset(
+        7,
+        btn7 || null
+    );
+}
+
+
+function applyDatePreset(
+    days,
+    btn
+) {
+
+    document
+        .querySelectorAll(".preset-btn")
+        .forEach(function(b) {
+
+            b.classList.remove(
+                "is-active"
+            );
+
+        });
+
+    if (btn) {
+        btn.classList.add(
+            "is-active"
+        );
+    }
+
+    var today =
+        new Date();
+
+    var start =
+        new Date(today);
+
+    if (days > 0) {
+
+        start.setDate(
+            today.getDate() -
+            (days - 1)
+        );
+    }
+
+    startDate.value =
+        localDateString(start);
+
+    endDate.value =
+        localDateString(today);
+
+    applyDate();
+}
+
+
+function applyDate() {
+
+    if (
+        !startDate.value ||
+        !endDate.value
+    ) {
+        return;
+    }
+
+    state.date = {
+
+        start:
+            new Date(
+                startDate.value +
+                "T00:00:00"
+            ),
+
+        end:
+            new Date(
+                endDate.value +
+                "T23:59:59"
+            )
+    };
+
+    updateScopeHint();
+
+    /*
+     * Date changes require a fresh search.
+     *
+     * Do not silently mutate current result pages.
+     */
+}
+
+
+function updateScopeHint() {
+
+    if (!scopeHint) return;
+
+    if (
+        searchModeSelect.value === "id"
+    ) {
+
+        scopeHint.className =
+            "scope-hint info";
+
+        scopeHint.textContent =
+            "Searching by Conversation ID — queue, agent, and date filters do not apply.";
+
+        return;
+    }
+
+    if (
+        !startDate.value ||
+        !endDate.value
+    ) {
+
+        scopeHint.className =
+            "scope-hint info";
+
+        scopeHint.textContent =
+            "Searching the last 7 days by default. Open Filters to adjust the date range.";
+
+        return;
+    }
+
+    var days =
+        Math.ceil(
+            (
+                new Date(
+                    endDate.value
+                ) -
+                new Date(
+                    startDate.value
+                )
+            ) /
+            86400000
+        ) + 1;
+
+    if (days > 7) {
+
+        scopeHint.className =
+            "scope-hint warn";
+
+        scopeHint.textContent =
+            days > 30
+                ? "Searching " +
+                  days +
+                  " days — this may take significantly longer."
+                : "Searching " +
+                  days +
+                  " days — results may take a little longer.";
+
+    } else {
+
+        scopeHint.className =
+            "scope-hint info";
+
+        scopeHint.textContent =
+            "Searching the last " +
+            days +
+            " day" +
+            (
+                days === 1
+                    ? ""
+                    : "s"
+            ) +
+            ".";
+    }
+}
+
+
+function scheduleApplyFilters() {
+
+    /*
+     * In this architecture filters are search criteria,
+     * not local client-side filters.
+     *
+     * Do not run a huge in-memory filter.
+     *
+     * User must explicitly Search again.
+     */
+}
+
+
+function clearFilters() {
+
+    document
+        .querySelectorAll(
+            ".queue-item input, .agent-item input"
+        )
+        .forEach(function(cb) {
+            cb.checked = false;
+        });
+
+    queueTextFilter.value = "";
+    agentTextFilter.value = "";
+
+    filterQueueList();
+    filterAgentList();
+
+    startDate.value = "";
+    endDate.value = "";
+
+    state.date = null;
+
+    document
+        .querySelectorAll(".preset-btn")
+        .forEach(function(b) {
+            b.classList.remove(
+                "is-active"
+            );
+        });
+
+    updateScopeHint();
+
+    /*
+     * Clear current search results.
+     */
+    state.currentPageItems = [];
+    state.filteredConversations = [];
+    state.matchesByConversationId = {};
+    state.pageCache = {};
+    state.nextQuery = null;
+    state.searchExhausted = false;
+    state.totalMatches = 0;
+
+    results.innerHTML =
+        "<div class='empty-state'>" +
+        "<div><strong>Filters cleared</strong></div>" +
+        "<div>Run Search to load results.</div>" +
+        "</div>";
+
+    count.textContent = "";
+    searchStatus.textContent = "";
+}
+
+
+function filterList(
+    inputEl,
+    itemClass
+) {
+
+    var text =
+        inputEl.value
+            .trim()
+            .toLowerCase();
+
+    document
+        .querySelectorAll(itemClass)
+        .forEach(function(item) {
+
+            var label =
+                item.querySelector("label");
+
+            var labelText =
+                label
+                    ? label.textContent.toLowerCase()
+                    : "";
+
+            item.style.display =
+                !text ||
+                labelText.includes(text)
+                    ? "flex"
+                    : "none";
+        });
+}
+
+
+function filterQueueList() {
+
+    filterList(
+        queueTextFilter,
+        ".queue-item"
+    );
+}
+
+
+function filterAgentList() {
+
+    filterList(
+        agentTextFilter,
+        ".agent-item"
+    );
+}
+
+
+function showFilters() {
+
+    filters.style.display =
+        "flex";
+
+    filterToggleBtn.classList.add(
+        "is-active"
+    );
+}
+
+
+/* ============================================================
+   Result rendering
+   ============================================================ */
+
+function getQueueName(c) {
+
+    return (
+        c["q.name"] ||
+        c[
+            "_msdyn_cdsqueueid_value@OData.Community.Display.V1.FormattedValue"
+        ] ||
+        c[
+            "msdyn_cdsqueueid@OData.Community.Display.V1.FormattedValue"
+        ] ||
+        ""
+    );
+}
+
+
+function getConversationAgentId(c) {
+
+    return normalizeGuid(
+        c["a.systemuserid"] ||
+        getLookupId(
+            c,
+            "msdyn_activeagentid"
+        ) ||
+        c.msdyn_activeagentid
+    );
+}
+
+
+function getConversationAgentName(c) {
+
+    return (
+        c["a.fullname"] ||
+        c[
+            "_msdyn_activeagentid_value@OData.Community.Display.V1.FormattedValue"
+        ] ||
+        c[
+            "msdyn_activeagentid@OData.Community.Display.V1.FormattedValue"
+        ] ||
+        "Unassigned / Unknown agent"
+    );
+}
+
+
+function getPageCount() {
+
+    if (
+        state.searchExhausted
+    ) {
+
+        return Math.max(
+            1,
+            Math.ceil(
+                state.totalMatches /
+                state.pageSize
+            )
+        );
+    }
+
+    /*
+     * At least current page + a possible next page.
+     *
+     * We intentionally do not fake an exact total.
+     */
+    return Math.max(
+        1,
+        state.currentPage +
+        (
+            state.nextQuery ||
+            state.currentPageItems.length ===
+                state.pageSize
+                ? 1
+                : 0
+        )
+    );
+}
+
+
+function renderCurrentPage() {
+
+    var items =
+        state.currentPageItems || [];
+
+    var page =
+        state.currentPage;
+
+    var totalKnown =
+        state.totalMatches;
+
+    var exact =
+        state.searchExhausted;
+
+    var start =
+        items.length
+            ? ((page - 1) *
+                state.pageSize) + 1
+            : 0;
+
+    var end =
+        start +
+        items.length -
+        1;
+
+    /*
+     * Count display.
+     */
+    if (!items.length) {
+
+        count.textContent =
+            state.searching
+                ? "Searching…"
+                : "Conversations: 0";
+
+    } else if (exact) {
+
+        count.textContent =
+            "Showing " +
+            start +
+            "–" +
+            end +
+            " of " +
+            totalKnown +
+            " conversation" +
+            (
+                totalKnown === 1
+                    ? ""
+                    : "s"
+            );
+
+    } else {
+
+        count.textContent =
+            "Showing " +
+            start +
+            "–" +
+            end +
+            " • " +
+            totalKnown +
+            "+ matches found • more available";
+    }
+
+    exportCsvBtn.disabled =
+        !items.length;
+
+    exportCsvBtn.textContent =
+        items.length
+            ? "Export Current Page (" +
+              items.length +
+              ")"
+            : "Export All";
+
+    exportSelectedBtn.disabled =
+        true;
+
+    exportSelectedBtn.textContent =
+        "Export Selected";
+
+    results.innerHTML = "";
+
+    if (!items.length) {
+
+        if (state.searching) {
+
+            results.innerHTML =
+                "<div class='empty-state'>" +
+                "<strong>Searching…</strong>" +
+                "<div>Processing transcript records safely in small batches.</div>" +
+                "</div>";
+
+            return;
+        }
+
+        results.innerHTML =
+            "<div class='empty-state'>" +
+            "<strong>No conversations found</strong>" +
+            "<div>Try another keyword or adjust the filters.</div>" +
+            "</div>";
+
+        return;
+    }
+
+
+    /* Toolbar */
+
+    var toolbar =
+        document.createElement(
+            "div"
+        );
+
+    toolbar.className =
+        "results-toolbar";
+
+    var selectAllCb =
+        document.createElement(
+            "input"
+        );
+
+    selectAllCb.type =
+        "checkbox";
+
+    selectAllCb.id =
+        "selectAllCb";
+
+    selectAllCb.onchange =
+        function() {
+
+            document
+                .querySelectorAll(
+                    ".result-select"
+                )
+                .forEach(function(cb) {
+
+                    cb.checked =
+                        selectAllCb.checked;
+                });
+
+            updateSelectionState();
+        };
+
+    var selectAllLabel =
+        document.createElement(
+            "label"
+        );
+
+    selectAllLabel.htmlFor =
+        "selectAllCb";
+
+    selectAllLabel.textContent =
+        "Select all on this page";
+
+    toolbar.append(
+        selectAllCb,
+        selectAllLabel
+    );
+
+    results.appendChild(
+        toolbar
+    );
+
+
+    /* Result rows */
+
+    items.forEach(function(c) {
+
+        var match =
+            getMatchForConversation(c);
+
+        var cId =
+            normalizeGuid(
+                c.activityid ||
+                c.msdyn_ocliveworkitemid
+            );
+
+        var row =
+            document.createElement(
+                "div"
+            );
+
+        row.className =
+            "result";
+
+        var cb =
+            document.createElement(
+                "input"
+            );
+
+        cb.type =
+            "checkbox";
+
+        cb.className =
+            "result-select";
+
+        cb.value =
+            cId;
+
+        cb.onchange =
+            updateSelectionState;
+
+        var body =
+            document.createElement(
+                "div"
+            );
+
+        body.className =
+            "result-body";
+
+        var title =
+            document.createElement(
+                "div"
+            );
+
+        title.className =
+            "title";
+
+        title.textContent =
+            c.subject ||
+            "Untitled conversation";
+
+        title.onclick =
+            function() {
+                openConversationTab(c);
+            };
+
+        var snippet =
+            document.createElement(
+                "div"
+            );
+
+        snippet.className =
+            "snippet";
+
+        snippet.innerHTML =
+            match &&
+            match.snippetHtml
+                ? match.snippetHtml
+                : "<em>No snippet available</em>";
+
+        body.append(
+            title,
+            snippet
+        );
+
+        var meta =
+            document.createElement(
+                "div"
+            );
+
+        meta.className =
+            "result-meta";
+
+        var createdDate =
+            c.createdon
+                ? localDateString(
+                    new Date(
+                        c.createdon
+                    )
+                )
+                : "—";
+
+        meta.innerHTML =
+            "<div><span class='result-meta-label'>Queue:</span> " +
+            escapeHtml(
+                getQueueName(c) ||
+                "—"
+            ) +
+            "</div>" +
+
+            "<div><span class='result-meta-label'>Agent:</span> " +
+            escapeHtml(
+                getConversationAgentName(c)
+            ) +
+            "</div>" +
+
+            "<div><span class='result-meta-label'>Date:</span> " +
+            escapeHtml(
+                createdDate
+            ) +
+            "</div>" +
+
+            "<div><span class='result-meta-label'>Chat ID:</span> " +
+            escapeHtml(
+                cId
+            ) +
+            "</div>";
+
+        row.append(
+            cb,
+            body,
+            meta
+        );
+
+        results.appendChild(
+            row
+        );
+    });
+
+
+    /* Pagination */
+
+    var hasNext =
+        !state.searchExhausted
+            ? !!state.nextQuery ||
+              items.length ===
+                state.pageSize
+            : page <
+              Math.ceil(
+                  state.totalMatches /
+                  state.pageSize
+              );
+
+    var hasPrev =
+        page > 1;
+
+    if (
+        hasNext ||
+        hasPrev
+    ) {
+
+        var pag =
+            document.createElement(
+                "div"
+            );
+
+        pag.className =
+            "pagination";
+
+        var prevBtn =
+            document.createElement(
+                "button"
+            );
+
+        prevBtn.textContent =
+            "← Prev";
+
+        prevBtn.disabled =
+            !hasPrev;
+
+        prevBtn.onclick =
+            function() {
+
+                if (
+                    page <= 1
+                ) {
+                    return;
+                }
+
+                var previous =
+                    page - 1;
+
+                /*
+                 * If previous page is cached,
+                 * load instantly.
+                 */
+                if (
+                    state.pageCache[
+                        previous
+                    ]
+                ) {
+
+                    state.currentPage =
+                        previous;
+
+                    state.currentPageItems =
+                        state.pageCache[
+                            previous
+                        ].slice();
+
+                    renderCurrentPage();
+
+                    return;
+                }
+
+                /*
+                 * We don't blindly restart a huge search.
+                 */
+                searchStatus.textContent =
+                    "Previous page is no longer cached. Run the search again.";
+
+            };
+
+
+        var pageLabel =
+            document.createElement(
+                "span"
+            );
+
+        pageLabel.textContent =
+            exactPageLabel();
+
+
+        var nextBtn =
+            document.createElement(
+                "button"
+            );
+
+        nextBtn.textContent =
+            "Next →";
+
+        nextBtn.disabled =
+            !hasNext ||
+            state.searching;
+
+        nextBtn.onclick =
+            function() {
+
+                if (
+                    nextBtn.disabled
+                ) {
+                    return;
+                }
+
+                loadPage(
+                    page + 1
+                );
+            };
+
+
+        var pageSizeWrap =
+            document.createElement(
+                "div"
+            );
+
+        pageSizeWrap.className =
+            "page-size-wrap";
+
+        var pageSizeLabel =
+            document.createElement(
+                "label"
+            );
+
+        pageSizeLabel.textContent =
+            "Per page:";
+
+        var pageSizeSelect =
+            document.createElement(
+                "select"
+            );
+
+        [10, 25, 50, 100]
+            .forEach(function(n) {
+
+                var opt =
+                    document.createElement(
+                        "option"
+                    );
+
+                opt.value =
+                    n;
+
+                opt.textContent =
+                    n;
+
+                opt.selected =
+                    n ===
+                    state.pageSize;
+
+                pageSizeSelect
+                    .appendChild(
+                        opt
+                    );
+            });
+
+        pageSizeSelect.onchange =
+            function() {
+
+                var newSize =
+                    parseInt(
+                        this.value,
+                        10
+                    );
+
+                if (
+                    !newSize ||
+                    newSize ===
+                        state.pageSize
+                ) {
+                    return;
+                }
+
+                /*
+                 * Page-size change changes the search
+                 * boundaries. Restart safely.
+                 */
+                state.pageSize =
+                    newSize;
+
+                executeSearch();
+            };
+
+        pageSizeWrap.append(
+            pageSizeLabel,
+            pageSizeSelect
+        );
+
+        pag.append(
+            prevBtn,
+            pageLabel,
+            nextBtn,
+            pageSizeWrap
+        );
+
+        results.appendChild(
+            pag
+        );
+    }
+}
+
+
+function exactPageLabel() {
+
+    if (
+        state.searchExhausted
+    ) {
+
+        var totalPages =
+            Math.max(
+                1,
+                Math.ceil(
+                    state.totalMatches /
+                    state.pageSize
+                )
+            );
+
+        return (
+            "Page " +
+            state.currentPage +
+            " of " +
+            totalPages
+        );
+    }
+
+    return (
+        "Page " +
+        state.currentPage +
+        " • More results available"
+    );
+}
+
+
+/* ============================================================
+   Selection
+   ============================================================ */
+
+function updateSelectionState() {
+
+    var checkboxes =
+        document.querySelectorAll(
+            ".result-select"
+        );
+
+    var checked =
+        Array.from(
+            checkboxes
+        ).filter(function(cb) {
+            return cb.checked;
+        });
+
+    var selectAllCb =
+        document.getElementById(
+            "selectAllCb"
+        );
+
+    if (selectAllCb) {
+
+        selectAllCb.checked =
+            checkboxes.length > 0 &&
+            checked.length ===
+                checkboxes.length;
+
+        selectAllCb.indeterminate =
+            checked.length > 0 &&
+            checked.length <
+                checkboxes.length;
+    }
+
+    exportSelectedBtn.disabled =
+        checked.length === 0;
+
+    exportSelectedBtn.textContent =
+        checked.length
+            ? "Export Selected (" +
+              checked.length +
+              ")"
+            : "Export Selected";
+}
+
+
+/* ============================================================
+   Lazy transcript retrieval
+   ============================================================ */
+
+function fetchTranscriptTextByTranscriptId(
+    transcriptId
+) {
+
+    if (!transcriptId) {
+        return Promise.resolve("");
+    }
+
+    var fetchXml =
+
+        "<fetch top='1'>" +
+
+        "<entity name='annotation'>" +
+
+        "<attribute name='documentbody' />" +
+
+        "<filter>" +
+
+        "<condition attribute='objectid' " +
+        "operator='eq' value='" +
+        xmlEncode(
+            transcriptId
+        ) +
+        "' />" +
+
+        "<condition attribute='documentbody' " +
+        "operator='not-null' />" +
+
+        "</filter>" +
+
+        "</entity>" +
+
+        "</fetch>";
+
+    return retrieveMultipleWithRetry(
+        "annotation",
+        "?fetchXml=" +
+        encodeURIComponent(
+            fetchXml
+        ),
+        MAX_RETRIES
+    )
+        .then(function(res) {
+
+            var row =
+                (res.entities || [])[0];
+
+            if (
+                !row ||
+                !row.documentbody
+            ) {
+                return "";
+            }
+
+            var rawText =
+                decodeBase64(
+                    row.documentbody
+                );
+
+            if (!rawText) {
+                return "";
+            }
+
+            var messages =
+                parseTranscriptMessages(
+                    rawText
+                );
+
+            if (!messages) {
+                return "";
+            }
+
+            return getFormattedTranscriptFromMessages(
+                messages
+            );
+
+        })
+        .catch(function(err) {
+
+            console.warn(
+                "[KWS] Lazy transcript retrieval failed:",
+                err
+            );
+
+            return "";
+        });
+}
+
+
+/*
+ * Controlled concurrency instead of Promise.all(500).
+ */
+function ensureTranscriptTextsForExport(
+    items
+) {
+
+    var list =
+        Array.isArray(items)
+            ? items
+            : [];
+
+    var missing = [];
+
+    list.forEach(function(c) {
+
+        var match =
+            getMatchForConversation(c);
+
+        if (
+            match &&
+            !match.fullTranscriptText &&
+            match.transcriptId
+        ) {
+
+            missing.push(match);
+        }
+    });
+
+    if (!missing.length) {
+        return Promise.resolve();
+    }
+
+    var cursor = 0;
+
+    function worker() {
+
+        if (
+            cursor >=
+            missing.length
+        ) {
+            return Promise.resolve();
+        }
+
+        var index =
+            cursor++;
+
+        var match =
+            missing[index];
+
+        return fetchTranscriptTextByTranscriptId(
+            match.transcriptId
+        )
+            .then(function(text) {
+
+                if (text) {
+
+                    match.fullTranscriptText =
+                        text;
+
+                    match.transcriptStatus =
+                        "loaded";
+
+                } else {
+
+                    match.transcriptStatus =
+                        "unavailable";
+                }
+
+            })
+            .then(worker);
+    }
+
+    var workers = [];
+
+    for (
+        var i = 0;
+        i < Math.min(
+            MAX_TRANSCRIPT_CONCURRENCY,
+            missing.length
+        );
+        i++
+    ) {
+
+        workers.push(
+            worker()
+        );
+    }
+
+    return Promise.all(
+        workers
+    ).then(function() {
+        return undefined;
+    });
+}
+
+
+/* ============================================================
+   CSV
+   ============================================================ */
+
+function csvEscape(value) {
+
+    value =
+        String(
+            value == null
+                ? ""
+                : value
+        );
+
+    if (
+        /[",\r\n]/.test(value)
+    ) {
+
+        return (
+            '"' +
+            value.replace(
+                /"/g,
+                '""'
+            ) +
+            '"'
+        );
+    }
+
+    return value;
+}
+
+
+var CSV_HEADERS = [
+    "Conversation Id",
+    "Subject",
+    "Created On",
+    "Queue",
+    "Agent",
+    "Transcript Id",
+    "Transcript"
+];
+
+
+function buildCsvRows(items) {
+
+    return items.map(function(c) {
+
+        var match =
+            getMatchForConversation(c) ||
+            {};
+
+        return [
+
+            c.activityid || "",
+
+            c.subject || "",
+
+            formatCsvDate(
+                c.createdon
+            ),
+
+            getQueueName(c),
+
+            getConversationAgentName(c),
+
+            match.transcriptId || "",
+
+            match.fullTranscriptText || ""
+
+        ];
+    });
+}
+
+
+function downloadCsvFile(
+    items,
+    filename
+) {
+
+    if (!items.length) {
+        return;
+    }
+
+    var csv =
+        [CSV_HEADERS]
+            .concat(
+                buildCsvRows(items)
+            )
+            .map(function(row) {
+
+                return row
+                    .map(csvEscape)
+                    .join(",");
+
+            })
+            .join("\r\n");
+
+    var blob =
+        new Blob(
+            [
+                "\ufeff" +
+                csv
+            ],
+            {
+                type:
+                    "text/csv;charset=utf-8;"
+            }
+        );
+
+    var url =
+        URL.createObjectURL(
+            blob
+        );
+
+    var link =
+        document.createElement(
+            "a"
+        );
+
+    link.href =
+        url;
+
+    link.download =
+        filename;
+
+    document.body.appendChild(
+        link
+    );
+
+    link.click();
+
+    document.body.removeChild(
+        link
+    );
+
+    URL.revokeObjectURL(
+        url
+    );
+}
+
+
+/*
+ * IMPORTANT:
+ *
+ * "Export All" is now intentionally limited to the results
+ * already discovered in the browser.
+ *
+ * A true 5,491-row export should eventually become an
+ * asynchronous server-side export job.
+ */
+function exportCsv() {
+
+    var items =
+        state.currentPageItems || [];
+
+    if (!items.length) {
+        return;
+    }
+
+    var stamp =
+        new Date()
+            .toISOString()
+            .replace(
+                /[:.]/g,
+                "-"
+            )
+            .slice(
+                0,
+                19
+            );
+
+    exportCsvBtn.disabled =
+        true;
+
+    var originalText =
+        exportCsvBtn.textContent;
+
+    exportCsvBtn.textContent =
+        "Preparing export…";
+
+    ensureTranscriptTextsForExport(
+        items
+    )
+        .then(function() {
+
+            downloadCsvFile(
+                items,
+                "conversation-transcript-search-page-" +
+                stamp +
+                ".csv"
+            );
+
+        })
+        .finally(function() {
+
+            exportCsvBtn.disabled =
+                !items.length;
+
+            exportCsvBtn.textContent =
+                originalText;
+        });
+}
+
+
+function exportSelected() {
+
+    var selectedIds =
+        new Set(
+            Array.from(
+                document.querySelectorAll(
+                    ".result-select:checked"
+                )
+            )
+            .map(function(cb) {
+
+                return normalizeGuid(
+                    cb.value
+                );
+
+            })
+        );
+
+    var items =
+        (
+            state.currentPageItems ||
+            []
+        )
+        .filter(function(c) {
+
+            return selectedIds.has(
+                normalizeGuid(
+                    c.activityid
+                )
+            );
+
+        });
+
+    if (!items.length) {
+        return;
+    }
+
+    var stamp =
+        new Date()
+            .toISOString()
+            .replace(
+                /[:.]/g,
+                "-"
+            )
+            .slice(
+                0,
+                19
+            );
+
+    exportSelectedBtn.disabled =
+        true;
+
+    var originalText =
+        exportSelectedBtn.textContent;
+
+    exportSelectedBtn.textContent =
+        "Preparing export…";
+
+    ensureTranscriptTextsForExport(
+        items
+    )
+        .then(function() {
+
+            downloadCsvFile(
+                items,
+                "conversation-transcript-search-selected-" +
+                stamp +
+                ".csv"
+            );
+
+        })
+        .finally(function() {
+
+            exportSelectedBtn.disabled =
+                false;
+
+            exportSelectedBtn.textContent =
+                originalText;
+
+            updateSelectionState();
+        });
+}
+
+
+/* ============================================================
+   Persistence
+   ============================================================ */
+
+/*
+ * Only persist SEARCH CRITERIA and lightweight current page.
+ *
+ * Never persist thousands of conversations.
+ */
+function saveState() {
+
+    if (
+        !window.sessionStorage
+    ) {
+        return;
+    }
+
+    if (
+        state.searchMode === "id"
+    ) {
+        return;
+    }
+
+    var payload = {
+
+        keyword:
+            keywordInput.value,
+
+        dateStart:
+            startDate.value,
+
+        dateEnd:
+            endDate.value,
+
+        currentPage:
+            state.currentPage,
+
+        pageSize:
+            state.pageSize,
+
+        selectedQueueIds:
+            getSelectedQueueIds(),
+
+        selectedAgentIds:
+            getSelectedAgentIds(),
+
+        searching:
+            state.searching
+    };
+
+    try {
+
+        sessionStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(
+                payload
+            )
+        );
+
+    } catch (e) {
+
+        console.warn(
+            "[KWS] sessionStorage unavailable"
+        );
+    }
+}
+
+
+function restoreState() {
+
+    if (
+        !window.sessionStorage
+    ) {
+        return null;
+    }
+
+    try {
+
+        var raw =
+            sessionStorage.getItem(
+                STORAGE_KEY
+            );
+
+        if (!raw) {
+            return null;
+        }
+
+        var saved =
+            JSON.parse(raw);
+
+        if (!saved) {
+            return null;
+        }
+
+        keywordInput.value =
+            saved.keyword || "";
+
+        if (
+            saved.dateStart &&
+            saved.dateEnd
+        ) {
+
+            startDate.value =
+                saved.dateStart;
+
+            endDate.value =
+                saved.dateEnd;
+
+            state.date = {
+
+                start:
+                    new Date(
+                        saved.dateStart +
+                        "T00:00:00"
+                    ),
+
+                end:
+                    new Date(
+                        saved.dateEnd +
+                        "T23:59:59"
+                    )
+            };
+        }
+
+        state.pageSize =
+            saved.pageSize ||
+            25;
+
+        state.currentPage =
+            1;
+
+        return {
+
+            selectedQueueIds:
+                saved.selectedQueueIds ||
+                [],
+
+            selectedAgentIds:
+                saved.selectedAgentIds ||
+                [],
+
+            searching:
+                !!saved.searching
+
+        };
+
+    } catch (e) {
+
+        return null;
+    }
+}
+
+
+/* ============================================================
+   Queue loading
+   ============================================================ */
+
+function loadQueues() {
+
+    var userId =
+        normalizeGuid(
+            parent.Xrm.Utility
+                .getGlobalContext()
+                .userSettings
+                .userId
+        );
+
+    var fetchXml =
+
+        "<fetch distinct='true'>" +
+
+        "<entity name='queue'>" +
+
+        "<attribute name='queueid' />" +
+        "<attribute name='name' />" +
+
+        "<filter>" +
+
+        "<condition attribute='statecode' " +
+        "operator='eq' value='0' />" +
+
+        "<condition attribute='msdyn_isomnichannelqueue' " +
+        "operator='eq' value='1' />" +
+
+        "</filter>" +
+
+        (
+            !state.isSupervisor
+
+                ? (
+                    "<link-entity name='queuemembership' " +
+                    "from='queueid' " +
+                    "to='queueid' " +
+                    "link-type='inner'>" +
+
+                    "<filter>" +
+
+                    "<condition attribute='systemuserid' " +
+                    "operator='eq' value='" +
+                    xmlEncode(userId) +
+                    "' />" +
+
+                    "</filter>" +
+
+                    "</link-entity>"
+                )
+
+                : ""
+        ) +
+
+        "<order attribute='name' />" +
+
+        "</entity>" +
+
+        "</fetch>";
+
+    return retrieveMultipleWithRetry(
+        "queue",
+        "?fetchXml=" +
+        encodeURIComponent(
+            fetchXml
+        ),
+        MAX_RETRIES
+    )
+        .then(function(res) {
+
+            queueFilter.innerHTML =
+                "";
+
+            (res.entities || [])
+                .forEach(function(q) {
+
+                    var div =
+                        document.createElement(
+                            "div"
+                        );
+
+                    div.className =
+                        "filter-item queue-item";
+
+                    var cb =
+                        document.createElement(
+                            "input"
+                        );
+
+                    cb.type =
+                        "checkbox";
+
+                    cb.value =
+                        normalizeGuid(
+                            q.queueid
+                        );
+
+                    var label =
+                        document.createElement(
+                            "label"
+                        );
+
+                    label.textContent =
+                        q.name || "";
+
+                    div.append(
+                        cb,
+                        label
+                    );
+
+                    queueFilter.appendChild(
+                        div
+                    );
+                });
+
+            filterQueueList();
+        });
+}
+
+
+/* ============================================================
+   Agent loading
+   ============================================================ */
+
+function setAgentFilterMessage(
+    message
+) {
+
+    agentFilter.innerHTML =
+        "";
+
+    var placeholder =
+        document.createElement(
+            "div"
+        );
+
+    placeholder.className =
+        "filter-placeholder";
+
+    placeholder.textContent =
+        message;
+
+    agentFilter.appendChild(
+        placeholder
+    );
+}
+
+
+function loadAgents() {
+
+    var userId =
+        normalizeGuid(
+            parent.Xrm.Utility
+                .getGlobalContext()
+                .userSettings
+                .userId
+        );
+
+    var exclusionFilter =
+        "<condition attribute='isdisabled' operator='eq' value='0' />";
+
+    var queueScope =
+
+        state.isSupervisor
+
+            ? (
+                "<link-entity name='queuemembership' " +
+                "from='systemuserid' " +
+                "to='systemuserid' " +
+                "link-type='inner' alias='aqm'>" +
+
+                "<link-entity name='queue' " +
+                "from='queueid' " +
+                "to='queueid' " +
+                "link-type='inner' alias='aq'>" +
+
+                "<filter>" +
+
+                "<condition attribute='statecode' " +
+                "operator='eq' value='0' />" +
+
+                "<condition attribute='msdyn_isomnichannelqueue' " +
+                "operator='eq' value='1' />" +
+
+                "</filter>" +
+
+                "</link-entity>" +
+
+                "</link-entity>"
+            )
+
+            : (
+                "<link-entity name='queuemembership' " +
+                "from='systemuserid' " +
+                "to='systemuserid' " +
+                "link-type='inner' alias='aqm'>" +
+
+                "<link-entity name='queue' " +
+                "from='queueid' " +
+                "to='queueid' " +
+                "link-type='inner' alias='aq'>" +
+
+                "<filter>" +
+
+                "<condition attribute='statecode' " +
+                "operator='eq' value='0' />" +
+
+                "<condition attribute='msdyn_isomnichannelqueue' " +
+                "operator='eq' value='1' />" +
+
+                "</filter>" +
+
+                "<link-entity name='queuemembership' " +
+                "from='queueid' " +
+                "to='queueid' " +
+                "link-type='inner' alias='cuqm'>" +
+
+                "<filter>" +
+
+                "<condition attribute='systemuserid' " +
+                "operator='eq' value='" +
+                xmlEncode(userId) +
+                "' />" +
+
+                "</filter>" +
+
+                "</link-entity>" +
+
+                "</link-entity>" +
+
+                "</link-entity>"
+            );
+
+    var fetchXml =
+
+        "<fetch distinct='true'>" +
+
+        "<entity name='systemuser'>" +
+
+        "<attribute name='systemuserid' />" +
+        "<attribute name='fullname' />" +
+
+        "<filter>" +
+        exclusionFilter +
+        "</filter>" +
+
+        queueScope +
+
+        "<order attribute='fullname' />" +
+
+        "</entity>" +
+
+        "</fetch>";
+
+    setAgentFilterMessage(
+        "Loading agents…"
+    );
+
+    return retrieveMultipleWithRetry(
+        "systemuser",
+        "?fetchXml=" +
+        encodeURIComponent(
+            fetchXml
+        ),
+        MAX_RETRIES
+    )
+        .then(function(res) {
+
+            agentFilter.innerHTML =
+                "";
+
+            var agents =
+                (res.entities || [])
+                    .filter(function(u) {
+
+                        var name =
+                            u.fullname || "";
+
+                        var nameLower =
+                            name.toLowerCase();
+
+                        if (
+                            name.toUpperCase() ===
+                            "SYSTEM"
+                        ) {
+                            return false;
+                        }
+
+                        if (
+                            name.charAt(0) ===
+                            "#"
+                        ) {
+
+                            return (
+                                nameLower.indexOf(
+                                    "botsvc"
+                                ) !== -1 ||
+                                nameLower.indexOf(
+                                    "copilot"
+                                ) !== -1
+                            );
+                        }
+
+                        return true;
+                    });
+
+            if (!agents.length) {
+
+                setAgentFilterMessage(
+                    "No agents found."
+                );
+
+                return;
+            }
+
+            agents.forEach(function(u) {
+
+                var div =
+                    document.createElement(
+                        "div"
+                    );
+
+                div.className =
+                    "filter-item agent-item";
+
+                var cb =
+                    document.createElement(
+                        "input"
+                    );
+
+                cb.type =
+                    "checkbox";
+
+                cb.value =
+                    normalizeGuid(
+                        u.systemuserid
+                    );
+
+                var label =
+                    document.createElement(
+                        "label"
+                    );
+
+                label.textContent =
+                    u.fullname ||
+                    u.systemuserid;
+
+                div.append(
+                    cb,
+                    label
+                );
+
+                agentFilter.appendChild(
+                    div
+                );
+            });
+
+            filterAgentList();
+
+        })
+        .catch(function(err) {
+
+            console.error(
+                "[KWS] loadAgents failed:",
+                err
+            );
+
+            setAgentFilterMessage(
+                "Failed to load agents."
+            );
+        });
+}
+
+
+/* ============================================================
+   Role detection
+   ============================================================ */
+
+function classifyRole(
+    type,
+    name,
+    content,
+    role,
+    userType
+) {
+
+    var combined =
+        [
+            type,
+            name,
+            role,
+            userType
+        ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+    var contentLower =
+        String(
+            content || ""
+        ).toLowerCase();
+
+    if (
+        /\b(bot|assistant|copilot|virtual agent|digital assistant)\b/
+            .test(combined)
+    ) {
+        return "Bot";
+    }
+
+    if (
+        /\bcustomer\b|\bvisitor\b|\bclient\b/
+            .test(combined)
+    ) {
+        return "Customer";
+    }
+
+    if (
+        /\bagent\b|\badvisor\b|\brepresentative\b|\bcsr\b/
+            .test(combined)
+    ) {
+        return "Agent";
+    }
+
+    if (
+        /\bcustomer\s*:/
+            .test(contentLower)
+    ) {
+        return "Customer";
+    }
+
+    return "";
+}
+
+
+/* ============================================================
+   Initialization
+   ============================================================ */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+        searchBtn.onclick =
+            function() {
+
+                var mode =
+                    searchModeSelect.value;
+
+                var input =
+                    keywordInput.value.trim();
+
+                if (
+                    mode === "id"
+                ) {
+
+                    var id =
+                        normalizeGuid(
+                            input
+                        );
+
+                    if (
+                        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+                            .test(id)
+                    ) {
+
+                        searchStatus.textContent =
+                            "Enter a valid Conversation ID.";
+
+                        return;
+                    }
+
+                    var token = {};
+
+                    state.searchToken =
+                        token;
+
+                    state.searchMode =
+                        "id";
+
+                    state.searching =
+                        true;
+
+                    state.currentPage =
+                        1;
+
+                    state.pageCache =
+                        {};
+
+                    state.matchesByConversationId =
+                        {};
+
+                    state.currentPageItems =
+                        [];
+
+                    state.filteredConversations =
+                        [];
+
+                    state.totalMatches =
+                        0;
+
+                    state.searchExhausted =
+                        true;
+
+                    state.nextQuery =
+                        null;
+
+                    searchBtn.disabled =
+                        true;
+
+                    searchBtn.textContent =
+                        "Searching…";
+
+                    searchStatus.textContent =
+                        "Looking up conversation…";
+
+                    results.innerHTML =
+                        "";
+
+                    searchByConversationId(
+                        id,
+                        token
+                    )
+                        .catch(function(err) {
+
+                            console.error(
+                                "[KWS] ID search failed:",
+                                err
+                            );
+
+                            searchStatus.textContent =
+                                "Conversation lookup failed.";
+
+                        })
+                        .finally(function() {
+
+                            if (
+                                state.searchToken ===
+                                token
+                            ) {
+
+                                state.searching =
+                                    false;
+
+                                searchBtn.disabled =
+                                    false;
+
+                                searchBtn.textContent =
+                                    "Search";
+
+                                renderCurrentPage();
+                            }
+                        });
+
+                    return;
+                }
+
+                executeKeywordSearch();
+            };
+
+
+        keywordInput.onkeydown =
+            function(e) {
+
+                if (
+                    e.key ===
+                    "Enter"
+                ) {
+
+                    searchBtn.click();
+                }
+            };
+
+
+        exportCsvBtn.onclick =
+            exportCsv;
+
+        exportSelectedBtn.onclick =
+            exportSelected;
+
+
+        filterToggleBtn.onclick =
+            function() {
+
+                var isOpen =
+                    filters.style.display ===
+                    "flex";
+
+                filters.style.display =
+                    isOpen
+                        ? "none"
+                        : "flex";
+
+                filterToggleBtn.classList.toggle(
+                    "is-active",
+                    !isOpen
+                );
+            };
+
+
+        clearBtn.onclick =
+            clearFilters;
+
+
+        startDate.onchange =
+            applyDate;
+
+        endDate.onchange =
+            applyDate;
+
+
+        queueTextFilter.oninput =
+            filterQueueList;
+
+        agentTextFilter.oninput =
+            filterAgentList;
+
+
+        searchModeSelect.onchange =
+            function() {
+
+                var isId =
+                    searchModeSelect.value ===
+                    "id";
+
+                keywordInput.placeholder =
+                    isId
+                        ? "Enter Conversation ID…"
+                        : "Search transcript…";
+
+                filterToggleBtn.disabled =
+                    isId;
+
+                if (
+                    isId &&
+                    filters.style.display ===
+                        "flex"
+                ) {
+
+                    filters.style.display =
+                        "none";
+
+                    filterToggleBtn.classList.remove(
+                        "is-active"
+                    );
+                }
+
+                updateScopeHint();
+            };
+
+
+        if (
+            defaultShowFiltersBtn
+        ) {
+
+            defaultShowFiltersBtn.onclick =
+                showFilters;
+        }
+
+
+        /*
+         * Restore only criteria.
+         *
+         * We deliberately do not restore thousands
+         * of previous result rows.
+         */
+        var restored =
+            restoreState();
+
+        updateScopeHint();
+
+
+        whenXrmReady(
+            function() {
+
+                var userId =
+                    normalizeGuid(
+                        parent.Xrm.Utility
+                            .getGlobalContext()
+                            .userSettings
+                            .userId
+                    );
+
+                var directRoleXml =
+
+                    "<fetch>" +
+
+                    "<entity name='role'>" +
+
+                    "<attribute name='name' />" +
+
+                    "<link-entity name='systemuserroles' " +
+                    "from='roleid' " +
+                    "to='roleid' " +
+                    "link-type='inner'>" +
+
+                    "<filter>" +
+
+                    "<condition attribute='systemuserid' " +
+                    "operator='eq' value='" +
+                    xmlEncode(userId) +
+                    "' />" +
+
+                    "</filter>" +
+
+                    "</link-entity>" +
+
+                    "</entity>" +
+
+                    "</fetch>";
+
+
+                var teamRoleXml =
+
+                    "<fetch>" +
+
+                    "<entity name='role'>" +
+
+                    "<attribute name='name' />" +
+
+                    "<link-entity name='teamroles' " +
+                    "from='roleid' " +
+                    "to='roleid' " +
+                    "link-type='inner'>" +
+
+                    "<link-entity name='teammembership' " +
+                    "from='teamid' " +
+                    "to='teamid' " +
+                    "link-type='inner'>" +
+
+                    "<filter>" +
+
+                    "<condition attribute='systemuserid' " +
+                    "operator='eq' value='" +
+                    xmlEncode(userId) +
+                    "' />" +
+
+                    "</filter>" +
+
+                    "</link-entity>" +
+
+                    "</link-entity>" +
+
+                    "</entity>" +
+
+                    "</fetch>";
+
+
+                var elevatedLower =
+                    ELEVATED_ROLES
+                        .map(function(r) {
+                            return r.toLowerCase();
+                        });
+
+
+                Promise.all([
+
+                    retrieveMultipleWithRetry(
+                        "role",
+                        "?fetchXml=" +
+                        encodeURIComponent(
+                            directRoleXml
+                        ),
+                        2
+                    )
+                    .catch(function() {
+                        return {
+                            entities: []
+                        };
+                    }),
+
+                    retrieveMultipleWithRetry(
+                        "role",
+                        "?fetchXml=" +
+                        encodeURIComponent(
+                            teamRoleXml
+                        ),
+                        2
+                    )
+                    .catch(function() {
+                        return {
+                            entities: []
+                        };
+                    })
+
+                ])
+                    .then(function(roleResults) {
+
+                        var allRoles =
+                            roleResults[0]
+                                .entities
+                                .concat(
+                                    roleResults[1]
+                                        .entities
+                                );
+
+                        state.isSupervisor =
+                            allRoles.some(
+                                function(e) {
+
+                                    return (
+                                        elevatedLower
+                                            .indexOf(
+                                                (
+                                                    e.name ||
+                                                    ""
+                                                ).toLowerCase()
+                                            ) !== -1
+                                    );
+                                }
+                            );
+
+                    })
+                    .catch(function() {
+
+                        state.isSupervisor =
+                            false;
+
+                    })
+                    .then(function() {
+
+                        /*
+                         * Load queue and agent filters
+                         * independently.
+                         */
+                        return Promise.all([
+
+                            loadQueues()
+                                .catch(
+                                    function(err) {
+
+                                        console.error(
+                                            "[KWS] Queue loading failed:",
+                                            err
+                                        );
+                                    }
+                                ),
+
+                            loadAgents()
+
+                        ]);
+
+                    })
+                    .then(function() {
+
+                        filterQueueList();
+                        filterAgentList();
+
+                        /*
+                         * Restore selected filters,
+                         * but do NOT automatically
+                         * scan transcripts.
+                         */
+                        if (restored) {
+
+                            restored
+                                .selectedQueueIds
+                                .forEach(
+                                    function(id) {
+
+                                        var cb =
+                                            queueFilter
+                                                .querySelector(
+                                                    "input[value='" +
+                                                    id +
+                                                    "']"
+                                                );
+
+                                        if (cb) {
+                                            cb.checked =
+                                                true;
+                                        }
+                                    }
+                                );
+
+                            restored
+                                .selectedAgentIds
+                                .forEach(
+                                    function(id) {
+
+                                        var cb =
+                                            agentFilter
+                                                .querySelector(
+                                                    "input[value='" +
+                                                    id +
+                                                    "']"
+                                                );
+
+                                        if (cb) {
+                                            cb.checked =
+                                                true;
+                                        }
+                                    }
+                                );
+
+                            filterQueueList();
+                            filterAgentList();
+
+                            scopeHint.className =
+                                "scope-hint info";
+
+                            scopeHint.textContent =
+                                "Previous search criteria restored. Click Search to load production results.";
+
+                        } else {
+
+                            applyDefaultDateScope();
+
+                            results.innerHTML =
+                                "<div class='empty-state'>" +
+                                "<div><strong>No conversations found</strong></div>" +
+                                "<div>Enter a keyword and click Search.</div>" +
+                                "</div>";
+                        }
+
+                    });
+
+            }
+        );
+    }
+);
+
+
+/* ============================================================
+   Lightweight self-tests
+   ============================================================ */
+
+(function runSelfTests() {
+
+    try {
+
+        console.assert(
+            normalizeGuid(
+                "{ABC-123}"
+            ) ===
+            "abc-123",
+            "GUID normalization failed"
+        );
+
+        console.assert(
+            xmlEncode(
+                "<test>"
+            ) ===
+            "&lt;test&gt;",
+            "XML encoding failed"
+        );
+
+        console.assert(
+            csvEscape(
+                'hello,"world"'
+            ) ===
+            '"hello,""world"""',
+            "CSV escaping failed"
+        );
+
+        console.assert(
+            isRetryableRetrieveError({
+                statusCode: 429
+            }) === true,
+            "429 retry classification failed"
+        );
+
+        console.assert(
+            isRetryableRetrieveError({
+                statusCode: 400
+            }) === false,
+            "400 retry classification failed"
+        );
+
+        console.log(
+            "[KWS] Production search self-tests completed."
+        );
+
+    } catch (e) {
+
+        console.warn(
+            "[KWS] Self-tests failed:",
+            e
+        );
+    }
+
+})();
+
+</script>
+</body>
+</html>
+ 
+
+
+
+

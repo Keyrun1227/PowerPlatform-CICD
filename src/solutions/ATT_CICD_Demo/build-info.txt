@@ -1,0 +1,6 @@
+Solution Name : ATT_CICD_Demo
+Source Env    : DEV
+Build         : Build104
+Version       : 1.0.0.2
+Managed ZIP   : ATT_CICD_Demo_managed.zip
+Unmanaged ZIP : ATT_CICD_Demo_unmanaged.zip

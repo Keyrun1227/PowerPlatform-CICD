@@ -1,0 +1,12 @@
+{
+  "sourceEnvironment": "DEV",
+  "solutionNames": [
+    "ATT_CICD_Demo"
+  ],
+  "build": "Build104",
+  "updateVersion": "true",
+  "exportedAt": "2026-08-17T09:21:30.9076417Z",
+  "workflow": "ATT Export Solution",
+  "repository": "Keyrun1227/PowerPlatform-CICD",
+  "commit": "287f196a682bf65f780ec9f816281e7fb604ecdb"
+}
