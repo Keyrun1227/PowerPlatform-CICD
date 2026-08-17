@@ -54,29 +54,6 @@ jobs:
 
     runs-on: windows-latest
 
-    # IMPORTANT:
-    #
-    # The selected source environment becomes the GitHub
-    # Environment.
-    #
-    # Create these GitHub Environments:
-    #
-    # CCaaS
-    # DEV
-    # UAT
-    # PROD
-    #
-    # Each should contain:
-    #
-    # CLIENT_ID
-    # CLIENT_SECRET
-    # TENANT_ID
-    # ENVIRONMENT_URL
-    #
-    environment:
-      name: ${{ inputs.sourceEnvironment }}
-
-
     steps:
 
       # ========================================================
@@ -91,7 +68,7 @@ jobs:
 
 
       # ========================================================
-      # 2. DISPLAY INPUTS
+      # 2. DISPLAY PIPELINE INPUTS
       # ========================================================
 
       - name: Display Pipeline Inputs
@@ -256,15 +233,35 @@ jobs:
 
       # ========================================================
       # 8. AUTHENTICATE TO SELECTED SOURCE ENVIRONMENT
+      #
+      # Repository secrets:
+      #
+      # CLIENT_ID
+      # CLIENT_SECRET
+      # TENANT_ID
+      # CCAASTRAIL_URL
+      # DEV_URL
+      # UAT_URL
+      # PROD_URL
+      #
+      # The selected source environment determines which URL
+      # is used.
       # ========================================================
 
       - name: Authenticate To Source Environment
         shell: pwsh
         env:
+
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           TENANT_ID: ${{ secrets.TENANT_ID }}
-          ENVIRONMENT_URL: ${{ secrets.ENVIRONMENT_URL }}
+
+          CCAAS_URL: ${{ secrets.CCAASTRAIL_URL }}
+          DEV_URL: ${{ secrets.DEV_URL }}
+          UAT_URL: ${{ secrets.UAT_URL }}
+          PROD_URL: ${{ secrets.PROD_URL }}
+
+          SOURCE_ENVIRONMENT: ${{ inputs.sourceEnvironment }}
 
         run: |
 
@@ -274,43 +271,172 @@ jobs:
           Write-Host "============================================================"
 
           Write-Host ""
-          Write-Host "Source Environment:"
-          Write-Host "${{ inputs.sourceEnvironment }}"
+          Write-Host "Selected Source Environment:"
+          Write-Host $env:SOURCE_ENVIRONMENT
+
+
+          # ----------------------------------------------------
+          # Validate common credentials
+          # ----------------------------------------------------
 
           if ([string]::IsNullOrWhiteSpace($env:CLIENT_ID)) {
+
               Write-Error "CLIENT_ID secret is missing."
               exit 1
           }
 
+
           if ([string]::IsNullOrWhiteSpace($env:CLIENT_SECRET)) {
+
               Write-Error "CLIENT_SECRET secret is missing."
               exit 1
           }
 
+
           if ([string]::IsNullOrWhiteSpace($env:TENANT_ID)) {
+
               Write-Error "TENANT_ID secret is missing."
               exit 1
           }
 
-          if ([string]::IsNullOrWhiteSpace($env:ENVIRONMENT_URL)) {
-              Write-Error "ENVIRONMENT_URL secret is missing."
+
+          # ----------------------------------------------------
+          # Select environment URL dynamically
+          # ----------------------------------------------------
+
+          $environmentUrl = $null
+
+          switch ($env:SOURCE_ENVIRONMENT) {
+
+              "CCaaS" {
+
+                  Write-Host ""
+                  Write-Host "Environment selected: CCaaS"
+                  Write-Host "Using CCAASTRAIL_URL"
+
+                  $environmentUrl = $env:CCAAS_URL
+              }
+
+              "DEV" {
+
+                  Write-Host ""
+                  Write-Host "Environment selected: DEV"
+                  Write-Host "Using DEV_URL"
+
+                  $environmentUrl = $env:DEV_URL
+              }
+
+              "UAT" {
+
+                  Write-Host ""
+                  Write-Host "Environment selected: UAT"
+                  Write-Host "Using UAT_URL"
+
+                  $environmentUrl = $env:UAT_URL
+              }
+
+              "PROD" {
+
+                  Write-Host ""
+                  Write-Host "Environment selected: PROD"
+                  Write-Host "Using PROD_URL"
+
+                  $environmentUrl = $env:PROD_URL
+              }
+
+              default {
+
+                  Write-Error ""
+                  Write-Error "============================================================"
+                  Write-Error "INVALID SOURCE ENVIRONMENT"
+                  Write-Error "============================================================"
+
+                  Write-Error "Unknown environment:"
+                  Write-Error $env:SOURCE_ENVIRONMENT
+
+                  exit 1
+              }
+          }
+
+
+          # ----------------------------------------------------
+          # Validate selected URL
+          # ----------------------------------------------------
+
+          if ([string]::IsNullOrWhiteSpace($environmentUrl)) {
+
+              Write-Error ""
+              Write-Error "============================================================"
+              Write-Error "ENVIRONMENT URL SECRET IS MISSING"
+              Write-Error "============================================================"
+
+              Write-Error ""
+              Write-Error "Selected environment:"
+              Write-Error $env:SOURCE_ENVIRONMENT
+
+              Write-Error ""
+              Write-Error "Make sure the corresponding repository secret exists."
+
+              Write-Error ""
+              Write-Error "Expected secrets:"
+
+              Write-Error "CCaaS -> CCAASTRAIL_URL"
+              Write-Error "DEV   -> DEV_URL"
+              Write-Error "UAT   -> UAT_URL"
+              Write-Error "PROD  -> PROD_URL"
+
               exit 1
           }
 
+
+          # ----------------------------------------------------
+          # Store URL for later steps
+          #
+          # We do NOT print the URL to avoid unnecessary exposure.
+          # ----------------------------------------------------
+
+          "SOURCE_ENVIRONMENT_URL=$environmentUrl" |
+            Out-File `
+              -FilePath $env:GITHUB_ENV `
+              -Encoding utf8 `
+              -Append
+
+
           Write-Host ""
-          Write-Host "Connecting to:"
-          Write-Host $env:ENVIRONMENT_URL
+          Write-Host "Environment URL selected successfully."
+
+
+          # ----------------------------------------------------
+          # PAC AUTHENTICATION
+          # ----------------------------------------------------
+
+          Write-Host ""
+          Write-Host "Connecting to selected Power Platform environment..."
 
           pac auth create `
             --applicationId "$env:CLIENT_ID" `
             --clientSecret "$env:CLIENT_SECRET" `
             --tenant "$env:TENANT_ID" `
-            --environment "$env:ENVIRONMENT_URL"
+            --environment "$environmentUrl"
+
 
           if ($LASTEXITCODE -ne 0) {
-              Write-Error "Source environment authentication failed."
+
+              Write-Error ""
+              Write-Error "============================================================"
+              Write-Error "SOURCE ENVIRONMENT AUTHENTICATION FAILED"
+              Write-Error "============================================================"
+
+              Write-Error ""
+              Write-Error "Environment:"
+              Write-Error $env:SOURCE_ENVIRONMENT
+
               exit 1
           }
+
+
+          Write-Host ""
+          Write-Host "Source environment authentication successful."
 
 
       # ========================================================
@@ -328,6 +454,12 @@ jobs:
 
           pac auth list
 
+          if ($LASTEXITCODE -ne 0) {
+
+              Write-Error "PAC authentication verification failed."
+              exit 1
+          }
+
 
       # ========================================================
       # 10. PREPARE DIRECTORIES
@@ -338,7 +470,9 @@ jobs:
         run: |
 
           Write-Host ""
-          Write-Host "Preparing directories..."
+          Write-Host "============================================================"
+          Write-Host "PREPARING BUILD DIRECTORIES"
+          Write-Host "============================================================"
 
           New-Item `
             -ItemType Directory `
@@ -364,6 +498,9 @@ jobs:
             -Path "./temp/$env:BUILD_VERSION" |
             Out-Null
 
+          Write-Host ""
+          Write-Host "Directories prepared."
+
 
       # ========================================================
       # 11. PROCESS SELECTED SOLUTIONS
@@ -372,29 +509,40 @@ jobs:
       - name: Export And Validate Solutions
         shell: pwsh
         env:
+
           SOLUTION_NAMES: ${{ inputs.solutionNames }}
+
           UPDATE_VERSION: ${{ inputs.updateVersion }}
+
           SOURCE_ENVIRONMENT: ${{ inputs.sourceEnvironment }}
 
         run: |
 
           $solutions = $env:SOLUTION_NAMES -split ','
 
+
           foreach ($solution in $solutions) {
 
               $solution = $solution.Trim()
+
 
               if ([string]::IsNullOrWhiteSpace($solution)) {
                   continue
               }
 
+
               Write-Host ""
               Write-Host ""
               Write-Host "############################################################"
               Write-Host "PROCESSING SOLUTION"
+              Write-Host "############################################################"
+
+              Write-Host ""
               Write-Host "Solution : $solution"
               Write-Host "Source   : $env:SOURCE_ENVIRONMENT"
               Write-Host "Build    : $env:BUILD_VERSION"
+
+              Write-Host ""
               Write-Host "############################################################"
 
 
@@ -424,6 +572,7 @@ jobs:
                 -Path $buildPath |
                 Out-Null
 
+
               New-Item `
                 -ItemType Directory `
                 -Force `
@@ -432,21 +581,28 @@ jobs:
 
 
               # ==================================================
-              # 12. READ CURRENT SOLUTION VERSION
+              # READ CURRENT SOLUTION VERSION
               # ==================================================
 
               Write-Host ""
-              Write-Host "Reading current solution version..."
+              Write-Host "============================================================"
+              Write-Host "READING CURRENT SOLUTION VERSION"
+              Write-Host "============================================================"
 
               $versionOutput =
                 pac solution online-version `
                   --solution-name "$solution"
 
+
               if ($LASTEXITCODE -ne 0) {
 
-                  Write-Error "Unable to read version for $solution."
+                  Write-Error ""
+                  Write-Error "Unable to read version for:"
+                  Write-Error $solution
+
                   exit 1
               }
+
 
               Write-Host ""
               Write-Host "PAC version response:"
@@ -454,11 +610,12 @@ jobs:
 
 
               # ==================================================
-              # 13. PARSE VERSION
+              # PARSE VERSION
               # ==================================================
 
               $versionText =
                 ($versionOutput | Out-String).Trim()
+
 
               $versionMatch =
                 [regex]::Match(
@@ -466,16 +623,20 @@ jobs:
                     "\d+\.\d+\.\d+(?:\.\d+)?"
                 )
 
+
               if (-not $versionMatch.Success) {
 
-                  Write-Error `
-                    "Could not determine solution version for $solution."
+                  Write-Error ""
+                  Write-Error "Could not determine solution version for:"
+                  Write-Error $solution
 
                   exit 1
               }
 
+
               $currentVersion =
                 $versionMatch.Value
+
 
               Write-Host ""
               Write-Host "Current Version:"
@@ -483,24 +644,31 @@ jobs:
 
 
               # ==================================================
-              # 14. OPTIONAL VERSION UPDATE
+              # OPTIONAL VERSION UPDATE
               # ==================================================
 
               if ($env:UPDATE_VERSION -eq "true") {
 
                   Write-Host ""
-                  Write-Host "Updating solution version..."
+                  Write-Host "============================================================"
+                  Write-Host "UPDATING SOLUTION VERSION"
+                  Write-Host "============================================================"
+
 
                   $parts =
                     $currentVersion.Split(".")
 
+
                   if ($parts.Count -eq 3) {
+
                       $currentVersion =
                         "$currentVersion.0"
                   }
 
+
                   $parts =
                     $currentVersion.Split(".")
+
 
                   $major =
                     [int]$parts[0]
@@ -514,37 +682,44 @@ jobs:
                   $revision =
                     [int]$parts[3]
 
+
                   $newRevision =
                     $revision + 1
 
+
                   $newVersion =
                     "$major.$minor.$build.$newRevision"
+
 
                   Write-Host ""
                   Write-Host "Old Version : $currentVersion"
                   Write-Host "New Version : $newVersion"
 
+
                   pac solution online-version `
                     --solution-name "$solution" `
                     --solution-version "$newVersion"
 
+
                   if ($LASTEXITCODE -ne 0) {
 
-                      Write-Error `
-                        "Failed to update version for $solution."
+                      Write-Error ""
+                      Write-Error "Failed to update version for:"
+                      Write-Error $solution
 
                       exit 1
                   }
 
-                  Write-Host `
-                    "Solution version updated successfully."
+
+                  Write-Host ""
+                  Write-Host "Solution version updated successfully."
 
               }
               else {
 
                   Write-Host ""
-                  Write-Host `
-                    "Solution version update disabled."
+                  Write-Host "Solution version update disabled."
+
 
                   if (
                     $currentVersion.Split(".").Count -eq 3
@@ -563,7 +738,7 @@ jobs:
 
 
               # ==================================================
-              # 15. EXPORT UNMANAGED
+              # EXPORT UNMANAGED
               # ==================================================
 
               Write-Host ""
@@ -571,23 +746,28 @@ jobs:
               Write-Host "EXPORTING UNMANAGED SOLUTION"
               Write-Host "============================================================"
 
+
               pac solution export `
                 --name "$solution" `
                 --path "$unmanagedPath"
 
+
               if ($LASTEXITCODE -ne 0) {
 
-                  Write-Error `
-                    "Unmanaged export failed for $solution."
+                  Write-Error ""
+                  Write-Error "Unmanaged export failed for:"
+                  Write-Error $solution
 
                   exit 1
               }
 
+
+              Write-Host ""
               Write-Host "Unmanaged export completed."
 
 
               # ==================================================
-              # 16. EXPORT MANAGED
+              # EXPORT MANAGED
               # ==================================================
 
               Write-Host ""
@@ -595,24 +775,29 @@ jobs:
               Write-Host "EXPORTING MANAGED SOLUTION"
               Write-Host "============================================================"
 
+
               pac solution export `
                 --name "$solution" `
                 --path "$managedPath" `
                 --managed
 
+
               if ($LASTEXITCODE -ne 0) {
 
-                  Write-Error `
-                    "Managed export failed for $solution."
+                  Write-Error ""
+                  Write-Error "Managed export failed for:"
+                  Write-Error $solution
 
                   exit 1
               }
 
+
+              Write-Host ""
               Write-Host "Managed export completed."
 
 
               # ==================================================
-              # 17. SOLUTION CHECKER
+              # SOLUTION CHECKER
               # ==================================================
 
               Write-Host ""
@@ -620,23 +805,28 @@ jobs:
               Write-Host "RUNNING SOLUTION CHECKER"
               Write-Host "============================================================"
 
+
               pac solution check `
                 --path "$unmanagedPath" `
                 --outputDirectory "$checkerPath"
 
+
               if ($LASTEXITCODE -ne 0) {
 
-                  Write-Error `
-                    "Solution Checker failed for $solution."
+                  Write-Error ""
+                  Write-Error "Solution Checker failed for:"
+                  Write-Error $solution
 
                   exit 1
               }
 
+
+              Write-Host ""
               Write-Host "Solution Checker completed."
 
 
               # ==================================================
-              # 18. REMOVE OLD SOURCE
+              # REMOVE OLD SOURCE
               # ==================================================
 
               if (Test-Path $sourcePath) {
@@ -652,7 +842,7 @@ jobs:
 
 
               # ==================================================
-              # 19. UNPACK UNMANAGED SOLUTION
+              # UNPACK UNMANAGED SOLUTION
               # ==================================================
 
               Write-Host ""
@@ -660,33 +850,40 @@ jobs:
               Write-Host "UNPACKING UNMANAGED SOLUTION"
               Write-Host "============================================================"
 
+
               New-Item `
                 -ItemType Directory `
                 -Force `
                 -Path $sourcePath |
                 Out-Null
 
+
               pac solution unpack `
                 --zipfile "$unmanagedPath" `
                 --folder "$sourcePath"
 
+
               if ($LASTEXITCODE -ne 0) {
 
-                  Write-Error `
-                    "Solution unpack failed for $solution."
+                  Write-Error ""
+                  Write-Error "Solution unpack failed for:"
+                  Write-Error $solution
 
                   exit 1
               }
 
+
+              Write-Host ""
               Write-Host "Solution unpack completed."
 
 
               # ==================================================
-              # 20. CREATE BUILD INFORMATION
+              # CREATE BUILD INFORMATION
               # ==================================================
 
               Write-Host ""
               Write-Host "Creating build information..."
+
 
               $versionInfo =
                 "Solution Name : $solution`n" +
@@ -696,6 +893,7 @@ jobs:
                 "Managed ZIP   : ${solution}_managed.zip`n" +
                 "Unmanaged ZIP : ${solution}_unmanaged.zip"
 
+
               Set-Content `
                 -Path "$sourcePath/build-info.txt" `
                 -Value $versionInfo `
@@ -703,7 +901,7 @@ jobs:
 
 
               # ==================================================
-              # 21. PACK SOURCE FOR VALIDATION
+              # PACK SOURCE FOR VALIDATION
               # ==================================================
 
               Write-Host ""
@@ -711,27 +909,33 @@ jobs:
               Write-Host "PACKING SOURCE FOR VALIDATION"
               Write-Host "============================================================"
 
+
               $validationZip =
                 "$buildPath/${solution}_validation.zip"
+
 
               pac solution pack `
                 --folder "$sourcePath" `
                 --zipfile "$validationZip" `
                 --packagetype Unmanaged
 
+
               if ($LASTEXITCODE -ne 0) {
 
-                  Write-Error `
-                    "Solution pack failed for $solution."
+                  Write-Error ""
+                  Write-Error "Solution pack failed for:"
+                  Write-Error $solution
 
                   exit 1
               }
 
+
+              Write-Host ""
               Write-Host "Validation package created."
 
 
               # ==================================================
-              # 22. DISPLAY RESULT
+              # SOLUTION SUMMARY
               # ==================================================
 
               Write-Host ""
@@ -739,6 +943,7 @@ jobs:
               Write-Host "SOLUTION COMPLETED"
               Write-Host "============================================================"
 
+              Write-Host ""
               Write-Host "Solution:"
               Write-Host $solution
 
@@ -762,22 +967,23 @@ jobs:
               Write-Host "Source:"
               Write-Host $sourcePath
 
+              Write-Host ""
               Write-Host "============================================================"
           }
 
 
       # ========================================================
       # 12. CREATE EXPORT METADATA
-      #
-      # This is what makes Import capable of finding the exact
-      # source + solution combination.
       # ========================================================
 
       - name: Create Export Metadata
         shell: pwsh
         env:
+
           SOURCE_ENVIRONMENT: ${{ inputs.sourceEnvironment }}
+
           SOLUTION_NAMES: ${{ inputs.solutionNames }}
+
           UPDATE_VERSION: ${{ inputs.updateVersion }}
 
         run: |
@@ -787,9 +993,12 @@ jobs:
           Write-Host "CREATING EXPORT METADATA"
           Write-Host "============================================================"
 
+
           $metadata = [ordered]@{
+
               sourceEnvironment = $env:SOURCE_ENVIRONMENT
-              solutionNames     = @(
+
+              solutionNames = @(
                   $env:SOLUTION_NAMES -split ',' |
                   ForEach-Object {
                       $_.Trim()
@@ -798,19 +1007,34 @@ jobs:
                       -not [string]::IsNullOrWhiteSpace($_)
                   }
               )
-              build             = $env:BUILD_VERSION
-              updateVersion     = $env:UPDATE_VERSION
-              exportedAt        = (Get-Date).ToUniversalTime().ToString("o")
-              workflow          = "ATT Export Solution"
-              repository        = "${{ github.repository }}"
-              commit            = "${{ github.sha }}"
+
+              build =
+                $env:BUILD_VERSION
+
+              updateVersion =
+                $env:UPDATE_VERSION
+
+              exportedAt =
+                (Get-Date).ToUniversalTime().ToString("o")
+
+              workflow =
+                "ATT Export Solution"
+
+              repository =
+                "${{ github.repository }}"
+
+              commit =
+                "${{ github.sha }}"
           }
+
 
           $metadataDirectory =
             "./deployments/$env:BUILD_VERSION"
 
+
           $metadataPath =
             "$metadataDirectory/export-metadata.json"
+
 
           $metadata |
             ConvertTo-Json -Depth 10 |
@@ -818,9 +1042,11 @@ jobs:
               -Path $metadataPath `
               -Encoding utf8
 
+
           Write-Host ""
           Write-Host "Metadata created:"
           Write-Host $metadataPath
+
 
           Get-Content $metadataPath
 
@@ -838,8 +1064,10 @@ jobs:
           Write-Host "GENERATED FILES"
           Write-Host "============================================================"
 
+
           Write-Host ""
           Write-Host "SOURCE FILES"
+
 
           if (Test-Path "./src") {
 
@@ -849,8 +1077,10 @@ jobs:
                 Select-Object FullName
           }
 
+
           Write-Host ""
           Write-Host "DEPLOYMENT PACKAGES"
+
 
           if (Test-Path "./deployments") {
 
@@ -860,8 +1090,10 @@ jobs:
                 Select-Object FullName
           }
 
+
           Write-Host ""
           Write-Host "SOLUTION CHECKER RESULTS"
+
 
           if (Test-Path "./checker-results") {
 
@@ -873,7 +1105,7 @@ jobs:
 
 
       # ========================================================
-      # 14. COMMIT EVERYTHING TO GITHUB
+      # 14. COMMIT BUILD TO GITHUB
       # ========================================================
 
       - name: Commit Build To Repository
@@ -885,20 +1117,30 @@ jobs:
           Write-Host "COMMITTING BUILD TO GITHUB"
           Write-Host "============================================================"
 
+
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git config user.email `
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
 
           git add build.txt
+
           git add src/
+
           git add deployments/
+
           git add checker-results/
+
 
           Write-Host ""
           Write-Host "Git status:"
 
           git status
 
+
           git diff --cached --quiet
+
 
           if ($LASTEXITCODE -eq 0) {
 
@@ -911,8 +1153,10 @@ jobs:
               Write-Host ""
               Write-Host "Creating commit..."
 
+
               git commit `
                 -m "ATT Export $env:BUILD_VERSION - ${{ inputs.sourceEnvironment }}"
+
 
               if ($LASTEXITCODE -ne 0) {
 
@@ -920,16 +1164,20 @@ jobs:
                   exit 1
               }
 
+
               Write-Host ""
               Write-Host "Pushing changes to main..."
 
+
               git push origin HEAD:main
+
 
               if ($LASTEXITCODE -ne 0) {
 
                   Write-Error "Git push failed."
                   exit 1
               }
+
 
               Write-Host ""
               Write-Host "Build committed successfully."
@@ -966,25 +1214,57 @@ jobs:
           Write-Host "ATT EXPORT PIPELINE COMPLETED SUCCESSFULLY"
           Write-Host "============================================================"
 
+
           Write-Host ""
           Write-Host "Source Environment:"
           Write-Host "${{ inputs.sourceEnvironment }}"
+
 
           Write-Host ""
           Write-Host "Build:"
           Write-Host $env:BUILD_VERSION
 
+
           Write-Host ""
           Write-Host "Solutions:"
           Write-Host "${{ inputs.solutionNames }}"
+
 
           Write-Host ""
           Write-Host "Version Update:"
           Write-Host "${{ inputs.updateVersion }}"
 
+
           Write-Host ""
           Write-Host "Artifact:"
           Write-Host "powerplatform-solutions-${{ inputs.sourceEnvironment }}-$env:BUILD_VERSION"
+
+
+          Write-Host ""
+          Write-Host "============================================================"
+
+          Write-Host ""
+          Write-Host "EXPORT FLOW:"
+          Write-Host ""
+          Write-Host "${{ inputs.sourceEnvironment }}"
+          Write-Host "      |"
+          Write-Host "      v"
+          Write-Host "Selected Environment URL"
+          Write-Host "      |"
+          Write-Host "      v"
+          Write-Host "PAC Authentication"
+          Write-Host "      |"
+          Write-Host "      v"
+          Write-Host "Solution Export"
+          Write-Host "      |"
+          Write-Host "      v"
+          Write-Host "Managed + Unmanaged ZIP"
+          Write-Host "      |"
+          Write-Host "      v"
+          Write-Host "Solution Checker"
+          Write-Host "      |"
+          Write-Host "      v"
+          Write-Host "GitHub Artifact"
 
           Write-Host ""
           Write-Host "============================================================"
