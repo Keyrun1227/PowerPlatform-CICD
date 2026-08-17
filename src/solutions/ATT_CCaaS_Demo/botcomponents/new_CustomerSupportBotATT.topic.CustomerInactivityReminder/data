@@ -1,0 +1,12 @@
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnInactivity
+  id: main
+  durationInSeconds: 120
+  actions:
+    - kind: SendActivity
+      id: sendActivity_SwX1RQ
+      activity: We're still waiting for your response.
+
+inputType: {}
+outputType: {}

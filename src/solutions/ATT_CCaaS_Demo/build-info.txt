@@ -1,0 +1,6 @@
+Solution Name : ATT_CCaaS_Demo
+Source Env    : CCaaS
+Build         : Build103
+Version       : 1.0.0.1
+Managed ZIP   : ATT_CCaaS_Demo_managed.zip
+Unmanaged ZIP : ATT_CCaaS_Demo_unmanaged.zip

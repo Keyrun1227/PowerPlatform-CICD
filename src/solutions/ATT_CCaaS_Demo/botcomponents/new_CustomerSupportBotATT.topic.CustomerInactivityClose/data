@@ -1,0 +1,15 @@
+kind: AdaptiveDialog
+beginDialog:
+  kind: OnInactivity
+  id: main
+  durationInSeconds: 240
+  actions:
+    - kind: SendActivity
+      id: sendActivity_NIQIWU
+      activity: Since we haven't received your response, this conversation will now be closed.
+
+    - kind: EndConversation
+      id: BkmHOD
+
+inputType: {}
+outputType: {}

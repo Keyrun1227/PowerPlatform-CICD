@@ -1,0 +1,8 @@
+<msdyn_decisioncontract msdyn_uniquename="new_8b1dda35_cae0_4ecb_b32b_d759b3824d7a">
+  <iscustomizable>1</iscustomizable>
+  <msdyn_name default="new_8b1dda35_cae0_4ecb_b32b_d759b3824d7a">
+    <label description="new_8b1dda35_cae0_4ecb_b32b_d759b3824d7a" languagecode="1033" />
+  </msdyn_name>
+  <statecode>0</statecode>
+  <statuscode>1</statuscode>
+</msdyn_decisioncontract>

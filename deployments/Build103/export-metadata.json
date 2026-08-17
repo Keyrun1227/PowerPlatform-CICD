@@ -1,0 +1,12 @@
+{
+  "sourceEnvironment": "CCaaS",
+  "solutionNames": [
+    "ATT_CCaaS_Demo"
+  ],
+  "build": "Build103",
+  "updateVersion": "true",
+  "exportedAt": "2026-08-17T09:01:35.1710328Z",
+  "workflow": "ATT Export Solution",
+  "repository": "Keyrun1227/PowerPlatform-CICD",
+  "commit": "42b10d824ee2ea9efb99a81593c04f2a3319095b"
+}

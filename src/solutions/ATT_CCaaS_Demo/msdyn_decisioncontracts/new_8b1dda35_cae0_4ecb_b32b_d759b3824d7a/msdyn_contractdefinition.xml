@@ -1,0 +1,7 @@
+<contract version="1">
+  <entity logical-name="msdyn_ocliveworkitem" key="msdyn_ocliveworkitem" />
+  <entity logical-name="msdyn_ocliveworkitemcharacteristic" key="msdyn_ocliveworkitemcharacteristic" is-collection="true" />
+  <complex key="liveworkitemcontext" />
+  <entity logical-name="msdyn_ocliveworkitemcapacityprofile" key="msdyn_ocliveworkitemcapacityprofile" is-collection="true" />
+  <entity logical-name="msdyn_ocliveworkitemmatchingcriteria" key="msdyn_ocliveworkitemmatchingcriteria" is-collection="true" />
+</contract>

@@ -1,0 +1,58 @@
+<msdyn_livechatconfig msdyn_livechatconfigid="66387bf2-0c9a-f111-b8de-7ced8dbb341e">
+  <iscustomizable>1</iscustomizable>
+  <msdyn_agentdisplayname>192350001</msdyn_agentdisplayname>
+  <msdyn_authenticatedsigninoptional>0</msdyn_authenticatedsigninoptional>
+  <msdyn_autodetectlanguage>0</msdyn_autodetectlanguage>
+  <msdyn_averagewaittime_enabled>1</msdyn_averagewaittime_enabled>
+  <msdyn_callingoptions>192350000</msdyn_callingoptions>
+  <msdyn_chathistorymonthlimit>0</msdyn_chathistorymonthlimit>
+  <msdyn_conversationmode>192350000</msdyn_conversationmode>
+  <msdyn_disclaimertext>This conversation may be monitored or recorded for quality assurance and training purposes. Please do not share sensitive personal or financial information.</msdyn_disclaimertext>
+  <msdyn_emailtemplate>Conversation transcript email template</msdyn_emailtemplate>
+  <msdyn_enablechatexpansion>1</msdyn_enablechatexpansion>
+  <msdyn_enablechatreconnect>0</msdyn_enablechatreconnect>
+  <msdyn_enablechattranscriptdownload>1</msdyn_enablechattranscriptdownload>
+  <msdyn_enablechattranscriptemail>0</msdyn_enablechattranscriptemail>
+  <msdyn_enablecobrowse>0</msdyn_enablecobrowse>
+  <msdyn_enablecustomerclosepersistentchat>0</msdyn_enablecustomerclosepersistentchat>
+  <msdyn_enablecustomsize>0</msdyn_enablecustomsize>
+  <msdyn_enablefileattachmentsforagents>1</msdyn_enablefileattachmentsforagents>
+  <msdyn_enablefileattachmentsforcustomers>1</msdyn_enablefileattachmentsforcustomers>
+  <msdyn_enableintropage>1</msdyn_enableintropage>
+  <msdyn_enablelegaldisclaimer>1</msdyn_enablelegaldisclaimer>
+  <msdyn_enablemessagereaction>0</msdyn_enablemessagereaction>
+  <msdyn_enablepersistentchatpreviousconversations>0</msdyn_enablepersistentchatpreviousconversations>
+  <msdyn_enablerealtimelanguagetranslation>0</msdyn_enablerealtimelanguagetranslation>
+  <msdyn_enablescreensharing>0</msdyn_enablescreensharing>
+  <msdyn_enablespeechtotextinput>0</msdyn_enablespeechtotextinput>
+  <msdyn_enabletranslationproviderfields>0</msdyn_enabletranslationproviderfields>
+  <msdyn_greetingsubtitle>How can we help you today?</msdyn_greetingsubtitle>
+  <msdyn_greetingtitle>Hey there!</msdyn_greetingtitle>
+  <msdyn_language>192360014</msdyn_language>
+  <msdyn_liveworkstreamid>
+    <msdyn_liveworkstreamid>05fe6c7f-4743-5ea9-6dc9-455e9e85d1e1</msdyn_liveworkstreamid>
+  </msdyn_liveworkstreamid>
+  <msdyn_name>ATT Customer Support Chat</msdyn_name>
+  <msdyn_ocwidgetlanguage>
+    <msdyn_oclanguageid>75b7fe8c-af61-41ea-a51c-449eb1cf8b7f</msdyn_oclanguageid>
+  </msdyn_ocwidgetlanguage>
+  <msdyn_positioninqueue_enabled>1</msdyn_positioninqueue_enabled>
+  <msdyn_postchatenabled>0</msdyn_postchatenabled>
+  <msdyn_postconversationsurveyenable>0</msdyn_postconversationsurveyenable>
+  <msdyn_prechatenabled>0</msdyn_prechatenabled>
+  <msdyn_proactivechatenabled>0</msdyn_proactivechatenabled>
+  <msdyn_requestvisitorlocation>0</msdyn_requestvisitorlocation>
+  <msdyn_showagentname>0</msdyn_showagentname>
+  <msdyn_showwidgetduringofflinehours>0</msdyn_showwidgetduringofflinehours>
+  <msdyn_uiversion>192350001</msdyn_uiversion>
+  <msdyn_widgetappid>6b94363d-aa91-4ac5-968b-1f0f756f16d1</msdyn_widgetappid>
+  <msdyn_widgetcustomizationconfigmodern>{"controlProps":{"locale":1033},"headerProps":{"styleProps":{"generalStyleProps":{"background":"#086DBF"}},"controlProps":{"headerTitleProps":{"text":"Customer Support Center"},"hideIcon":false,"hideTitle":false,"iconKey":"chat-multiple"}},"chatButtonProps":{"styleProps":{"iconStyleProps":{"backgroundColor":"#086DBF"}},"controlProps":{"iconKey":"headset"}},"styleProps":{"generalStyles":{"width":"400px","height":"680px"}}}</msdyn_widgetcustomizationconfigmodern>
+  <msdyn_widgetposition>192236010</msdyn_widgetposition>
+  <msdyn_widgetsnippetclassic>&lt;script id="Microsoft_Omnichannel_LCWidget" src="https://oc-cdn-public-ind.azureedge.net/livechatwidget/scripts/LiveChatBootstrapper.js" onerror="(function(el){el.parentNode.removeChild(el);var s=document.createElement('script');s.src='https://ocprodpublicindgs.blob.core.windows.net/livechatwidget/scripts/LiveChatBootstrapper.js';s.setAttribute('id', 'Microsoft_Omnichannel_LCWidget');s.setAttribute('data-app-id', '6b94363d-aa91-4ac5-968b-1f0f756f16d1');s.setAttribute('data-lcw-version', 'prod');s.setAttribute('data-org-id', '6409816d-9090-f111-8067-6045bde84ad1');s.setAttribute('data-org-url', 'https://m-6409816d-9090-f111-8067-6045bde84ad1.in.omnichannelengagementhub.com');s.setAttribute('data-widget-ui-version', 'classic');document.body.appendChild(s);})(this);" data-app-id="6b94363d-aa91-4ac5-968b-1f0f756f16d1" data-lcw-version="prod" data-org-id="6409816d-9090-f111-8067-6045bde84ad1" data-org-url="https://m-6409816d-9090-f111-8067-6045bde84ad1.in.omnichannelengagementhub.com" data-widget-ui-version="classic" async&gt;&lt;/script&gt;</msdyn_widgetsnippetclassic>
+  <msdyn_widgetsnippetmodern>&lt;script id="Microsoft_Omnichannel_LCWidget" src="https://oc-cdn-public-ind.azureedge.net/livechatwidget/scripts/LiveChatBootstrapper.js" onerror="(function(el){el.parentNode.removeChild(el);var s=document.createElement('script');s.src='https://ocprodpublicindgs.blob.core.windows.net/livechatwidget/scripts/LiveChatBootstrapper.js';s.setAttribute('id', 'Microsoft_Omnichannel_LCWidget');s.setAttribute('data-app-id', '6b94363d-aa91-4ac5-968b-1f0f756f16d1');s.setAttribute('data-lcw-version', 'prod');s.setAttribute('data-org-id', '6409816d-9090-f111-8067-6045bde84ad1');s.setAttribute('data-org-url', 'https://m-6409816d-9090-f111-8067-6045bde84ad1.in.omnichannelengagementhub.com');s.setAttribute('data-widget-ui-version', 'modern');document.body.appendChild(s);})(this);" data-app-id="6b94363d-aa91-4ac5-968b-1f0f756f16d1" data-lcw-version="prod" data-org-id="6409816d-9090-f111-8067-6045bde84ad1" data-org-url="https://m-6409816d-9090-f111-8067-6045bde84ad1.in.omnichannelengagementhub.com" data-widget-ui-version="modern" async&gt;&lt;/script&gt;</msdyn_widgetsnippetmodern>
+  <msdyn_widgetsoundnotification>1</msdyn_widgetsoundnotification>
+  <msdyn_widgetthemecolor>19236002</msdyn_widgetthemecolor>
+  <msdyn_widgetvisualnotification>1</msdyn_widgetvisualnotification>
+  <statecode>0</statecode>
+  <statuscode>1</statuscode>
+</msdyn_livechatconfig>
