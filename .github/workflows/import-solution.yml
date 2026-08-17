@@ -66,17 +66,6 @@ jobs:
 
     runs-on: windows-latest
 
-    # Target environment supplies:
-    #
-    # CLIENT_ID
-    # CLIENT_SECRET
-    # TENANT_ID
-    # ENVIRONMENT_URL
-    #
-    environment:
-      name: ${{ inputs.targetEnvironment }}
-
-
     steps:
 
       # ========================================================
@@ -149,8 +138,7 @@ jobs:
 
           if ($LASTEXITCODE -ne 0) {
 
-              Write-Error `
-                "Power Platform CLI installation failed."
+              Write-Error "Power Platform CLI installation failed."
 
               exit 1
           }
@@ -164,8 +152,7 @@ jobs:
         shell: pwsh
         run: |
 
-          $pacPath =
-            "$env:USERPROFILE\.dotnet\tools"
+          $pacPath = "$env:USERPROFILE\.dotnet\tools"
 
           Write-Host ""
           Write-Host "PAC path:"
@@ -195,8 +182,7 @@ jobs:
 
           if ($LASTEXITCODE -ne 0) {
 
-              Write-Error `
-                "PAC CLI verification failed."
+              Write-Error "PAC CLI verification failed."
 
               exit 1
           }
@@ -204,20 +190,6 @@ jobs:
 
       # ========================================================
       # 7. FIND MATCHING SUCCESSFUL EXPORT
-      #
-      # This is the major change.
-      #
-      # We DO NOT simply take the latest successful export.
-      #
-      # We search for:
-      #
-      # Source Environment
-      # +
-      # Solution Name
-      # +
-      # Successful Export
-      #
-      # Export metadata is used to verify the exact match.
       # ========================================================
 
       - name: Find Matching Successful Export
@@ -249,14 +221,11 @@ jobs:
 
           $headers = @{
 
-              Authorization =
-                "Bearer $env:GH_TOKEN"
+              Authorization = "Bearer $env:GH_TOKEN"
 
-              Accept =
-                "application/vnd.github+json"
+              Accept = "application/vnd.github+json"
 
-              "X-GitHub-Api-Version" =
-                "2022-11-28"
+              "X-GitHub-Api-Version" = "2022-11-28"
           }
 
 
@@ -284,9 +253,7 @@ jobs:
           }
           catch {
 
-              Write-Error `
-                "Unable to query GitHub Export workflow."
-
+              Write-Error "Unable to query GitHub Export workflow."
               Write-Error $_
 
               exit 1
@@ -295,8 +262,7 @@ jobs:
 
           if ($null -eq $response.workflow_runs) {
 
-              Write-Error `
-                "GitHub returned no workflow runs."
+              Write-Error "GitHub returned no workflow runs."
 
               exit 1
           }
@@ -385,12 +351,11 @@ jobs:
                   Write-Host $artifact.name
 
 
-                  # Only inspect ATT Power Platform artifacts.
-
                   if (
                     $artifact.name -notlike
                     "powerplatform-solutions-*"
                   ) {
+
                       continue
                   }
 
@@ -539,6 +504,7 @@ jobs:
 
                       Write-Host ""
                       Write-Host "Source environment does not match."
+
                       continue
                   }
 
@@ -547,8 +513,7 @@ jobs:
                   # VERIFY SOLUTION
                   # ==================================================
 
-                  $solutionMatch =
-                    $false
+                  $solutionMatch = $false
 
 
                   foreach (
@@ -562,8 +527,7 @@ jobs:
                         $env:SOLUTION_NAME.Trim().ToLower()
                       ) {
 
-                          $solutionMatch =
-                            $true
+                          $solutionMatch = $true
 
                           break
                       }
@@ -588,6 +552,7 @@ jobs:
 
                   $matchingArtifact =
                     $artifact
+
 
                   Write-Host ""
                   Write-Host "======================================================"
@@ -711,6 +676,7 @@ jobs:
           Write-Host "DOWNLOADING SELECTED EXPORT ARTIFACT"
           Write-Host "======================================================"
 
+
           Write-Host ""
           Write-Host "Artifact:"
           Write-Host $env:ARTIFACT_NAME
@@ -754,9 +720,7 @@ jobs:
           }
           catch {
 
-              Write-Error `
-                "Failed to download Export artifact."
-
+              Write-Error "Failed to download Export artifact."
               Write-Error $_
 
               exit 1
@@ -765,8 +729,7 @@ jobs:
 
           if (-not (Test-Path $artifactZip)) {
 
-              Write-Error `
-                "Downloaded artifact ZIP was not found."
+              Write-Error "Downloaded artifact ZIP was not found."
 
               exit 1
           }
@@ -790,6 +753,7 @@ jobs:
           Write-Host "EXTRACTING EXPORT ARTIFACT"
           Write-Host "======================================================"
 
+
           $extractPath =
             "./deployment-artifact/extracted"
 
@@ -809,6 +773,7 @@ jobs:
 
           Write-Host ""
           Write-Host "Extracted artifact contents:"
+
 
           Get-ChildItem `
             -Path $extractPath `
@@ -847,8 +812,7 @@ jobs:
 
           if ($null -eq $metadata) {
 
-              Write-Error `
-                "export-metadata.json was not found."
+              Write-Error "export-metadata.json was not found."
 
               exit 1
           }
@@ -883,8 +847,7 @@ jobs:
           }
 
 
-          $solutionFound =
-            $false
+          $solutionFound = $false
 
 
           foreach (
@@ -898,8 +861,7 @@ jobs:
                 $env:SOLUTION_NAME.Trim().ToLower()
               ) {
 
-                  $solutionFound =
-                    $true
+                  $solutionFound = $true
 
                   break
               }
@@ -1200,7 +1162,17 @@ jobs:
 
 
       # ========================================================
-      # 15. AUTHENTICATE TO TARGET
+      # 15. AUTHENTICATE TO TARGET ENVIRONMENT
+      #
+      # IMPORTANT:
+      # We use repository secrets that already exist:
+      #
+      # CCAASTRAIL_URL
+      # DEV_URL
+      # UAT_URL
+      # PROD_URL
+      #
+      # We DO NOT use secrets.ENVIRONMENT_URL anymore.
       # ========================================================
 
       - name: Authenticate To Target Environment
@@ -1211,7 +1183,13 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           TENANT_ID: ${{ secrets.TENANT_ID }}
-          ENVIRONMENT_URL: ${{ secrets.ENVIRONMENT_URL }}
+
+          CCAASTRAIL_URL: ${{ secrets.CCAASTRAIL_URL }}
+          DEV_URL: ${{ secrets.DEV_URL }}
+          UAT_URL: ${{ secrets.UAT_URL }}
+          PROD_URL: ${{ secrets.PROD_URL }}
+
+          TARGET_ENVIRONMENT: ${{ inputs.targetEnvironment }}
 
         run: |
 
@@ -1223,51 +1201,173 @@ jobs:
 
           Write-Host ""
           Write-Host "Target:"
-          Write-Host "${{ inputs.targetEnvironment }}"
+          Write-Host $env:TARGET_ENVIRONMENT
 
+
+          # ======================================================
+          # VALIDATE COMMON SECRETS
+          # ======================================================
 
           if ([string]::IsNullOrWhiteSpace($env:CLIENT_ID)) {
 
-              Write-Error "CLIENT_ID secret is missing."
+              Write-Error "CLIENT_ID repository secret is missing."
+
               exit 1
           }
 
 
           if ([string]::IsNullOrWhiteSpace($env:CLIENT_SECRET)) {
 
-              Write-Error "CLIENT_SECRET secret is missing."
+              Write-Error "CLIENT_SECRET repository secret is missing."
+
               exit 1
           }
 
 
           if ([string]::IsNullOrWhiteSpace($env:TENANT_ID)) {
 
-              Write-Error "TENANT_ID secret is missing."
+              Write-Error "TENANT_ID repository secret is missing."
+
               exit 1
           }
 
 
-          if ([string]::IsNullOrWhiteSpace($env:ENVIRONMENT_URL)) {
+          # ======================================================
+          # SELECT TARGET URL
+          # ======================================================
 
-              Write-Error "ENVIRONMENT_URL secret is missing."
+          $targetUrl = $null
+
+
+          switch ($env:TARGET_ENVIRONMENT) {
+
+              "CCaaS" {
+
+                  $targetUrl =
+                    $env:CCAASTRAIL_URL
+
+                  Write-Host ""
+                  Write-Host "Using CCaaS environment URL."
+              }
+
+              "DEV" {
+
+                  $targetUrl =
+                    $env:DEV_URL
+
+                  Write-Host ""
+                  Write-Host "Using DEV environment URL."
+              }
+
+              "UAT" {
+
+                  $targetUrl =
+                    $env:UAT_URL
+
+                  Write-Host ""
+                  Write-Host "Using UAT environment URL."
+              }
+
+              "PROD" {
+
+                  $targetUrl =
+                    $env:PROD_URL
+
+                  Write-Host ""
+                  Write-Host "Using PROD environment URL."
+              }
+
+              default {
+
+                  Write-Error `
+                    "Unsupported target environment: $env:TARGET_ENVIRONMENT"
+
+                  exit 1
+              }
+          }
+
+
+          # ======================================================
+          # VALIDATE SELECTED URL
+          # ======================================================
+
+          if ([string]::IsNullOrWhiteSpace($targetUrl)) {
+
+              Write-Error ""
+              Write-Error "======================================================"
+              Write-Error "TARGET ENVIRONMENT URL IS MISSING"
+              Write-Error "======================================================"
+
+              Write-Error ""
+              Write-Error "Target Environment:"
+              Write-Error $env:TARGET_ENVIRONMENT
+
+              Write-Error ""
+
+              switch ($env:TARGET_ENVIRONMENT) {
+
+                  "CCaaS" {
+                      Write-Error "Required repository secret: CCAAstrail_URL"
+                  }
+
+                  "DEV" {
+                      Write-Error "Required repository secret: DEV_URL"
+                  }
+
+                  "UAT" {
+                      Write-Error "Required repository secret: UAT_URL"
+                  }
+
+                  "PROD" {
+                      Write-Error "Required repository secret: PROD_URL"
+                  }
+              }
+
               exit 1
           }
 
+
+          Write-Host ""
+          Write-Host "Target URL:"
+          Write-Host $targetUrl
+
+
+          # ======================================================
+          # AUTHENTICATE
+          # ======================================================
 
           pac auth create `
             --applicationId "$env:CLIENT_ID" `
             --clientSecret "$env:CLIENT_SECRET" `
             --tenant "$env:TENANT_ID" `
-            --environment "$env:ENVIRONMENT_URL"
+            --environment "$targetUrl"
 
 
           if ($LASTEXITCODE -ne 0) {
 
+              Write-Error ""
               Write-Error `
                 "Target environment authentication failed."
 
               exit 1
           }
+
+
+          # ======================================================
+          # SAVE TARGET URL FOR OTHER STEPS
+          # ======================================================
+
+          "TARGET_ENVIRONMENT_URL=$targetUrl" |
+            Out-File `
+              -FilePath $env:GITHUB_ENV `
+              -Encoding utf8 `
+              -Append
+
+
+          Write-Host ""
+          Write-Host "======================================================"
+          Write-Host "TARGET AUTHENTICATION SUCCESSFUL"
+          Write-Host "======================================================"
 
 
       # ========================================================
@@ -1283,7 +1383,17 @@ jobs:
           Write-Host "VERIFYING TARGET AUTHENTICATION"
           Write-Host "======================================================"
 
+
           pac auth list
+
+
+          if ($LASTEXITCODE -ne 0) {
+
+              Write-Error `
+                "PAC authentication verification failed."
+
+              exit 1
+          }
 
 
       # ========================================================
@@ -1338,6 +1448,11 @@ jobs:
           Write-Host ""
           Write-Host "Deployment Type:"
           Write-Host "${{ inputs.deploymentType }}"
+
+
+          Write-Host ""
+          Write-Host "Target:"
+          Write-Host "${{ inputs.targetEnvironment }}"
 
 
           pac solution import `
@@ -1637,6 +1752,11 @@ jobs:
 
 
           Write-Host ""
+          Write-Host "Target URL:"
+          Write-Host $env:TARGET_ENVIRONMENT_URL
+
+
+          Write-Host ""
           Write-Host "======================================================"
           Write-Host "SOURCE → EXPORT → ARTIFACT → TARGET"
           Write-Host "======================================================"
@@ -1685,6 +1805,16 @@ jobs:
           Write-Host ""
           Write-Host "Export Run:"
           Write-Host "$env:EXPORT_RUN_NUMBER"
+
+
+          Write-Host ""
+          Write-Host "Export Run ID:"
+          Write-Host "$env:EXPORT_RUN_ID"
+
+
+          Write-Host ""
+          Write-Host "Artifact:"
+          Write-Host "$env:ARTIFACT_NAME"
 
 
           $script =
